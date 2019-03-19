@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="jcl_arduino_new"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="jcl_arduino_new">
+				<Option output="/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/jcl_arduino_new" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/Users/matheusinacio/projects/jcl-arduino-new/."/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include/c++/v1"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/10.0.0/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 jcl_arduino_new"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="jcl_arduino_new/fast">
+				<Option output="/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/jcl_arduino_new" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/Users/matheusinacio/projects/jcl-arduino-new/."/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include/c++/v1"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/10.0.0/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 jcl_arduino_new/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/matheusinacio/projects/jcl-arduino-new/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/action.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/action.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/constants.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/constants.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/context.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/context.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/crypt.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/crypt.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/helpers.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/jcl.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/jcl.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/library.properties">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/message.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/message.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/metadata.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/metadata.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/sensor.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/sensor.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/utils.cpp">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/utils.h">
+			<Option target="jcl_arduino_new"/>
+		</Unit>
+		<Unit filename="/Users/matheusinacio/projects/jcl-arduino-new/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

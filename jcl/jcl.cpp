@@ -10,9 +10,11 @@
 #include <Ethernet.h>
 #include <SPI.h>
 
-void writeEpromHelp(int *j, char *str);
+//void writeEpromHelp(int *j, char *str);
 
 char *readEpromHelp(int *j);
+void writeEpromHelp(int *j, char *str);
+void writeEpromHelp(int *j, String str);
 
 JCL::JCL(int hostPort, char *mac) {
     delay(7500);
@@ -181,37 +183,37 @@ void JCL::writeEprom() {
     EEPROM.write(addr++, Constants::SEPARATOR);
     EEPROM.write(addr++, Constants::SEPARATOR);
 
-    writeEpromHelp(&addr, get_metadata()->get_boardName());
-    writeEpromHelp(&addr, get_metadata()->get_hostIP());
-    writeEpromHelp(&addr, get_metadata()->get_hostPort());
-    writeEpromHelp(&addr, get_metadata()->get_serverIP());
-    writeEpromHelp(&addr, get_metadata()->get_serverPort());
+    writeEpromHelp(&addr, String(get_metadata()->get_boardName()));
+    writeEpromHelp(&addr, String(get_metadata()->get_hostIP()));
+    writeEpromHelp(&addr, String(get_metadata()->get_hostPort()));
+    writeEpromHelp(&addr, String(get_metadata()->get_serverIP()));
+    writeEpromHelp(&addr, String(get_metadata()->get_serverPort()));
     // writeEpromHelp(&addr, getMetadata()->getHostIP());
 
     for (int k = 0; k < TOTAL_SENSORS; k++)
         if (sensors[k] != NULL) {
             Sensor *s = get_sensors()[k];
             EEPROM.write(addr++, k);
-            writeEpromHelp(&addr, s->get_sensorNickname());
+            writeEpromHelp(&addr, String(s->get_sensorNickname()));
 
             EEPROM.write(addr++, s->get_typeIO());
             EEPROM.write(addr++, (char) s->get_type());
 
-            writeEpromHelp(&addr, s->get_delay());
-            writeEpromHelp(&addr, s->get_sensorSize());
+            writeEpromHelp(&addr, String(s->get_delay()));
+            writeEpromHelp(&addr, String(s->get_sensorSize()));
 
             EEPROM.write(addr++, s->get_numContexts());
 
             for (int numCtx = 0; numCtx < s->get_numContexts(); numCtx++) {
                 Context *ctx = s->getEnabledContexts()[numCtx];
-                writeEpromHelp(&addr, ctx->get_nickname());
-                writeEpromHelp(&addr, ctx->get_expression());
+                writeEpromHelp(&addr, String(ctx->get_nickname()));
+                writeEpromHelp(&addr, String(ctx->get_expression()));
 
                 EEPROM.write(addr++, ctx->get_numExpressions());
 
                 for (int numExp = 0; numExp < ctx->get_numExpressions(); numExp++) {
-                    writeEpromHelp(&addr, ctx->get_operators()[numExp]);
-                    writeEpromHelp(&addr, ctx->get_threshold()[numExp]);
+                    writeEpromHelp(&addr, String(ctx->get_operators()[numExp]));
+                    writeEpromHelp(&addr, String(ctx->get_threshold()[numExp]));
                 }
 
                 EEPROM.write(addr++, ctx->get_numActions());
@@ -220,15 +222,16 @@ void JCL::writeEprom() {
                     Action *act = ctx->getEnabledActions()[numActions];
 
                     EEPROM.write(addr++, act->is_acting());
-                    writeEpromHelp(&addr, act->get_hostIP());
-                    writeEpromHelp(&addr, act->get_hostPort());
+                    writeEpromHelp(&addr, String(act->get_hostIP()));
+                    writeEpromHelp(&addr, String(act->get_hostPort()));
 
                     if (!act->is_acting()) {
                         EEPROM.write(addr++, act->is_useSensorValue());
-                        writeEpromHelp(&addr, act->get_hostMac());
-                        writeEpromHelp(&addr, act->get_ticket());
-                        writeEpromHelp(&addr, act->get_classNameSize());
-                        writeEpromHelp(&addr, act->get_methodNameSize());
+
+                        writeEpromHelp(&addr, String(act->get_hostMac()));
+                        writeEpromHelp(&addr, String(act->get_ticket()));
+                        writeEpromHelp(&addr, String(act->get_className()));
+                        writeEpromHelp(&addr, String(act->get_methodName()));
                     }
                     writeEpromHelp(&addr, act->get_paramSize());
                 }
@@ -325,7 +328,7 @@ void JCL::run() {
     }
 }
 
-void JCL::conectToBroker() {
+void JCL::connectToBroker() {
     m_mqtt = new PubSubClient(mqttEthClient);
 
     m_mqtt->setServer(get_metadata()->get_brokerIP(), m_metadata->get_brokerPort());
@@ -470,11 +473,14 @@ char *readEpromHelp(int *j) {
     return result;
 }
 
-void writeEpromHelp(int *j, char *str) {
-    EEPROM.write((*j)++, strlen(str));
-    for (int i = 0; i < strlen(str); i++) {
+void writeEpromHelp(int *j, String str) {
+    int len = str.length();
+    EEPROM.write((*j)++, len);
+    for (int i = 0; i < len; i++) {
         EEPROM.write((*j)++, str[i]);
     }
+    EEPROM.write((*j),'\0');   //Add termination null character for String Data
+    EEPROM.commit();
 }
 
 int JCL::get_totalSensors() {

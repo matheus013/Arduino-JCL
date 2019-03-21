@@ -2,7 +2,7 @@
 
 const char Constants::CHAR_INPUT = 'I';
 const char Constants::CHAR_OUTPUT = 'O';
-const int Constants::SERVO_ACTUATOR  = 1;
+const int Constants::SERVO_ACTUATOR = 1;
 const char Constants::SEPARATOR = '|';
 // const long Constants::TIMEOUT = 10000;
 const char Constants::turnOnMessage[] /*PROGMEM*/ = "Turn On";

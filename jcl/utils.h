@@ -3,11 +3,13 @@
 
 #include <Arduino.h>
 
-class Utils{
+class Utils {
 public:
     static unsigned char hexDigit(char ch);
-    static byte* macAsByteArray(char* mac);
-    static int* getIPAsArray(char* IP);
+
+    static byte *macAsByteArray(char *mac);
+
+    static int *getIPAsArray(char *IP);
 };
 
 #endif

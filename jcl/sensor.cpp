@@ -71,7 +71,7 @@ int Sensor::getAnalogPin() {
     return atoi(m_pin) - JCL::get_totalDigitalSensors();
 }
 
-string getString(char x){
+string getString(char x) {
     // string class has a constructor
     // that allows us to specify size of
     // string as first parameter and character
@@ -93,6 +93,6 @@ string Sensor::toString() {
     return str;
 }
 
-Context** Sensor::getEnabledContexts(){
+Context **Sensor::getEnabledContexts() {
     return this->enabledContexts;
 }

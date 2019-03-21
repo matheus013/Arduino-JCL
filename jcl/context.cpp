@@ -14,13 +14,13 @@ Context::Context() {
 
     this->m_numExpressions = 0;
     for (uint8_t x = 0; x < MAX_ACTIONS_PER_CONTEXT; x++)
-        this->m_enabledActions[x] = NULL;
+        this->enabledActions[x] = NULL;
     this->m_numActions = 0;
     this->m_triggered = false;
 }
 
 void Context::deleteContext() {
-    for (int i = 0; i < numActions; i++)
+    for (int i = 0; i < m_numActions; i++)
         enabledActions[i]->deleteAction();
     free(this->m_nickname);
     free(this->m_expression);
@@ -33,7 +33,7 @@ void Context::deleteContext() {
     free(this);
 }
 
-Action **Context::get_enabledActions() {
+Action **Context::getEnabledActions() {
     return this->enabledActions;
 }
 
@@ -41,7 +41,7 @@ string Context::toString() {
     string str = "";
     str.append(get_nickname()).append(" ");
     str.append(get_expression()).append(" ");
-    str.append(get_numActions()).append(" ");
-    str.append(get_numExpressions());
+    str.append(to_string(get_numActions())).append(" ");
+    str.append(to_string(get_numExpressions()));
     return str;
 }

@@ -43,7 +43,7 @@ public:
 
     int freeRam();
 
-    Sensor** get_sensors();
+    Sensor **get_sensors();
 
     int numSensors;
     char message[850];

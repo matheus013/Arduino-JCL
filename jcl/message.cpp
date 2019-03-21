@@ -117,229 +117,244 @@ void Message::sendMetadata(int messageType) {
 
     /* Setting the value of the DEVICE_TYPE */
     m_jcl->message[currentPosition++] = 10;
-    m_jcl->message[currentPosition++] = strlen(Constants::deviceTypeMessage) + strlen(Constants::deviceTypeValue) + 4;
+    //strlen(Constants::deviceTypeMessage) = 11, strlen(Constants::deviceTypeValue) = 1
+    m_jcl->message[currentPosition++] = 16;
     m_jcl->message[currentPosition++] = 10;
-    m_jcl->message[currentPosition++] = strlen(Constants::deviceTypeMessage);
-    for (unsigned int i = 0; i < strlen(Constants::deviceTypeMessage); i++)
+    m_jcl->message[currentPosition++] = 11;
+    for (unsigned int i = 0; i < 11; i++)
         m_jcl->message[currentPosition++] = Constants::deviceTypeMessage[i];
     m_jcl->message[currentPosition++] = 18;
-    m_jcl->message[currentPosition++] = strlen(Constants::deviceTypeValue);
-    for (unsigned int i = 0; i < strlen(Constants::deviceTypeValue); i++)
-        m_jcl->message[currentPosition++] = Constants::deviceTypeValue[i];
+    m_jcl->message[currentPosition++] = 1;
+    //for (unsigned int i = 0; i < 1; i++)
+    m_jcl->message[currentPosition++] = Constants::deviceTypeValue[0];
 
     /* Setting the value of the PORT */
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::portMessage) + strlen(jcl->getMetadata()->getHostPort()) + 4;
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::portMessage);
-    for (unsigned int i = 0; i < strlen(Constants::portMessage); i++)
-        jcl->message[currentPosition++] = Constants::portMessage[i];
-    jcl->message[currentPosition++] = 18;
-    jcl->message[currentPosition++] = strlen(jcl->getMetadata()->getHostPort());
-    for (unsigned int i = 0; i < strlen(jcl->getMetadata()->getHostPort()); i++)
-        jcl->message[currentPosition++] = jcl->getMetadata()->getHostPort()[i];
+    m_jcl->message[currentPosition++] = 10;
+    //strlen(Constants::portMessage) = 4
+    int hostPortLength = strlen(m_jcl->get_metadata()->get_hostPort());
+    m_jcl->message[currentPosition++] = hostPortLength + 8;
+    m_jcl->message[currentPosition++] = 10;
+    m_jcl->message[currentPosition++] = 4;
+    for (unsigned int i = 0; i < 4; i++)
+        m_jcl->message[currentPosition++] = Constants::portMessage[i];
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = hostPortLength;
+    for (unsigned int i = 0; i < hostPortLength; i++)
+        m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_hostPort()[i];
 
     if (messageType == -1) {
         /* Setting the value of the IP */
-        jcl->message[currentPosition++] = 10;
-        jcl->message[currentPosition++] = strlen(Constants::ipMessage) + strlen(jcl->getMetadata()->getHostIP()) + 4;
-        jcl->message[currentPosition++] = 10;
-        jcl->message[currentPosition++] = strlen(Constants::ipMessage);
-        for (unsigned int i = 0; i < strlen(Constants::ipMessage); i++)
-            jcl->message[currentPosition++] = Constants::ipMessage[i];
-        jcl->message[currentPosition++] = 18;
-        jcl->message[currentPosition++] = strlen(jcl->getMetadata()->getHostIP());
-        for (unsigned int i = 0; i < strlen(jcl->getMetadata()->getHostIP()); i++)
-            jcl->message[currentPosition++] = jcl->getMetadata()->getHostIP()[i];
+        m_jcl->message[currentPosition++] = 10;
+        //strlen(Constants::ipMessage) = 2
+        int hostIpLength = strlen(m_jcl->get_metadata()->get_hostIP());
+        m_jcl->message[currentPosition++] = hostIpLength + 6;
+        m_jcl->message[currentPosition++] = 10;
+        m_jcl->message[currentPosition++] = 2;
+        for (unsigned int i = 0; i < 2; i++)
+            m_jcl->message[currentPosition++] = Constants::ipMessage[i];
+        m_jcl->message[currentPosition++] = 18;
+        m_jcl->message[currentPosition++] = hostIpLength;
+        for (unsigned int i = 0; i < hostIpLength; i++)
+            m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_hostIP()[i];
     }
 
     /* Setting the value of the CORE(S) */
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::coreMessage) + strlen(Constants::coreValue) + 4;
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::coreMessage);
-    for (unsigned int i = 0; i < strlen(Constants::coreMessage); i++)
-        jcl->message[currentPosition++] = Constants::coreMessage[i];
-    jcl->message[currentPosition++] = 18;
-    jcl->message[currentPosition++] = strlen(Constants::coreValue);
-    for (unsigned int i = 0; i < strlen(Constants::coreValue); i++)
-        jcl->message[currentPosition++] = Constants::coreValue[i];
+    m_jcl->message[currentPosition++] = 10;
+    //strlen(Constants::coreMessage) = 7, strlen(Constants::coreValue) = 1
+    m_jcl->message[currentPosition++] = 12;
+    m_jcl->message[currentPosition++] = 10;
+    m_jcl->message[currentPosition++] = 7;
+    for (unsigned int i = 0; i < 7; i++)
+        m_jcl->message[currentPosition++] = Constants::coreMessage[i];
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = 1;
+//    for (unsigned int i = 0; i < strlen(Constants::coreValue); i++)
+    m_jcl->message[currentPosition++] = Constants::coreValue[0];
 
     /* Setting the value of the MAC */
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::macMessage) + strlen(jcl->getMetadata()->getMAC()) + 4;
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::macMessage);
-    for (unsigned int i = 0; i < strlen(Constants::macMessage); i++)
-        jcl->message[currentPosition++] = Constants::macMessage[i];
-    jcl->message[currentPosition++] = 18;
-    jcl->message[currentPosition++] = strlen(jcl->getMetadata()->getMAC());
-    for (unsigned int i = 0; i < strlen(jcl->getMetadata()->getMAC()); i++)
-        jcl->message[currentPosition++] = jcl->getMetadata()->getMAC()[i];
+    m_jcl->message[currentPosition++] = 10;
+    //strlen(Constants::macMessage) = 3
+    int macLength = strlen(m_jcl->get_metadata()->get_mac());
+    m_jcl->message[currentPosition++] = macLength + 7;
+    m_jcl->message[currentPosition++] = 10;
+    m_jcl->message[currentPosition++] = 3;
+    for (unsigned int i = 0; i < 3; i++)
+        m_jcl->message[currentPosition++] = Constants::macMessage[i];
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = macLength;
+    for (unsigned int i = 0; i < macLength; i++)
+        m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_mac()[i];
 
     /* Setting the value of the Device Platform */
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] =
-            strlen(Constants::devicePlatformMessage) + strlen(Constants::devicePlatformValue) + 4;
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::devicePlatformMessage);
-    for (unsigned int i = 0; i < strlen(Constants::devicePlatformMessage); i++)
-        jcl->message[currentPosition++] = Constants::devicePlatformMessage[i];
-    jcl->message[currentPosition++] = 18;
-    jcl->message[currentPosition++] = strlen(Constants::devicePlatformValue);
-    for (unsigned int i = 0; i < strlen(Constants::devicePlatformValue); i++)
-        jcl->message[currentPosition++] = Constants::devicePlatformValue[i];
+    m_jcl->message[currentPosition++] = 10;
+    //strlen(Constants::devicePlatformMessage) = 15,strlen(Constants::devicePlatformValue) = 12
+    m_jcl->message[currentPosition++] = 21;
+    m_jcl->message[currentPosition++] = 10;
+    m_jcl->message[currentPosition++] = 15;
+    for (unsigned int i = 0; i < 15; i++)
+        m_jcl->message[currentPosition++] = Constants::devicePlatformMessage[i];
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = 12;
+    for (unsigned int i = 0; i < 12; i++)
+        m_jcl->message[currentPosition++] = Constants::devicePlatformValue[i];
 
     /* Setting the value of the NUMBER_SENSORS */
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] =
-            strlen(Constants::numberSensorsMessage) + strlen(jcl->getMetadata()->getNumConfiguredSensors()) + 4;
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::numberSensorsMessage);
-    for (unsigned int k = 0; k < strlen(Constants::numberSensorsMessage); k++)
-        jcl->message[currentPosition++] = Constants::numberSensorsMessage[k];
-    jcl->message[currentPosition++] = 18;
-    jcl->message[currentPosition++] = strlen(jcl->getMetadata()->getNumConfiguredSensors());
-    for (unsigned int k = 0; k < strlen(jcl->getMetadata()->getNumConfiguredSensors()); k++)
-        jcl->message[currentPosition++] = jcl->getMetadata()->getNumConfiguredSensors()[k];
+    m_jcl->message[currentPosition++] = 10;
+    //strlen(Constants::numberSensorsMessage) = 14
+    int numberConfiguredSensorsLength = strlen(m_jcl->get_metadata()->get_numConfiguredSensors());
+    m_jcl->message[currentPosition++] = 18 + numberConfiguredSensorsLength;
+    m_jcl->message[currentPosition++] = 10;
+    m_jcl->message[currentPosition++] = 14;
+    for (unsigned int k = 0; k < 14; k++)
+        m_jcl->message[currentPosition++] = Constants::numberSensorsMessage[k];
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = numberConfiguredSensorsLength;
+    for (unsigned int k = 0; k < numberConfiguredSensorsLength; k++)
+        m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_numConfiguredSensors()[k];
 
     /* Setting the value of the STANDBY */
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::standByMessage) + standBySize + 4;
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::standByMessage);
-    for (unsigned int k = 0; k < strlen(Constants::standByMessage); k++)
-        jcl->message[currentPosition++] = Constants::standByMessage[k];
-    jcl->message[currentPosition++] = 18;
-    if (jcl->getMetadata()->isStandBy()) {
-        jcl->message[currentPosition++] = strlen(Constants::trueMessage);
-        for (unsigned int k = 0; k < strlen(Constants::trueMessage); k++)
-            jcl->message[currentPosition++] = Constants::trueMessage[k];
+    m_jcl->message[currentPosition++] = 10;
+    //strlen(Constants::standByMessage) = 7
+    m_jcl->message[currentPosition++] = standBySize + 11;
+    m_jcl->message[currentPosition++] = 10;
+    m_jcl->message[currentPosition++] = 7;
+    for (unsigned int k = 0; k < 7; k++)
+        m_jcl->message[currentPosition++] = Constants::standByMessage[k];
+    m_jcl->message[currentPosition++] = 18;
+    if (m_jcl->get_metadata()->is_standBy()) {
+        //strlen(Constants::trueMessage) = 4
+        m_jcl->message[currentPosition++] = 4;
+        for (unsigned int k = 0; k < 4; k++)
+            m_jcl->message[currentPosition++] = Constants::trueMessage[k];
     } else {
-        jcl->message[currentPosition++] = strlen(Constants::falseMessage);
-        for (unsigned int k = 0; k < strlen(Constants::falseMessage); k++)
-            jcl->message[currentPosition++] = Constants::falseMessage[k];
+        //strlen(Constants::falseMessage) = 5
+        m_jcl->message[currentPosition++] = 5;
+        for (unsigned int k = 0; k < 5; k++)
+            m_jcl->message[currentPosition++] = Constants::falseMessage[k];
     }
 
 //  if (atoi(jcl->getMetadata()->getNumConfiguredSensors()) != 0){
 
     /* Setting the value of the ENABLE_SENSOR */
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::enableSensorMessage) + enableSensorSize + 4;
-    jcl->message[currentPosition++] = 10;
-    jcl->message[currentPosition++] = strlen(Constants::enableSensorMessage);
-    for (unsigned int k = 0; k < strlen(Constants::enableSensorMessage); k++)
-        jcl->message[currentPosition++] = Constants::enableSensorMessage[k];
-    jcl->message[currentPosition++] = 18;
-    jcl->message[currentPosition++] = enableSensorSize;
+    m_jcl->message[currentPosition++] = 10;
+    //strlen(Constants::enableSensorMessage) = 13
+    m_jcl->message[currentPosition++] = 17 + enableSensorSize;
+    m_jcl->message[currentPosition++] = 10;
+    m_jcl->message[currentPosition++] = 13;
+    for (unsigned int k = 0; k < 13; k++)
+        m_jcl->message[currentPosition++] = Constants::enableSensorMessage[k];
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = enableSensorSize;
 
-    for (int k = 0; k < JCL::getTotalSensors(); k++) {
-        if (jcl->getSensors()[k] != NULL) {
-            for (unsigned i = 0; i < strlen(jcl->getSensors()[k]->getPin()); i++)
-                jcl->message[currentPosition++] = jcl->getSensors()[k]->getPin()[i];
-            jcl->message[currentPosition++] = ';';
+    for (int k = 0; k < JCL::get_totalSensors(); k++) {
+        if (m_jcl->get_sensors()[k] != NULL) {
+            for (unsigned i = 0; i < strlen(m_jcl->get_sensors()[k]->get_pin()); i++)
+                m_jcl->message[currentPosition++] = m_jcl->get_sensors()[k]->get_pin()[i];
+            m_jcl->message[currentPosition++] = ';';
         }
     }
-    jcl->message[currentPosition++] = ';';
+    m_jcl->message[currentPosition++] = ';';
 
     /* Setting the value of the SENSOR_ALIAS */
-    for (i = 0; i < JCL::getTotalSensors(); i++) {
-        if (jcl->getSensors()[i] != NULL) {
-            jcl->message[currentPosition++] = 10;
-            jcl->message[currentPosition++] =
-                    strlen(Constants::sensorAliasMessage) + strlen(jcl->getSensors()[i]->getPin()) +
-                    strlen(jcl->getSensors()[i]->getSensorNickname()) + 4;
-            jcl->message[currentPosition++] = 10;
-            jcl->message[currentPosition++] =
-                    strlen(Constants::sensorAliasMessage) + strlen(jcl->getSensors()[i]->getPin());
-            for (unsigned int k = 0; k < strlen(Constants::sensorAliasMessage); k++)
-                jcl->message[currentPosition++] = Constants::sensorAliasMessage[k];
-            for (unsigned int k = 0; k < strlen(jcl->getSensors()[i]->getPin()); k++)
-                jcl->message[currentPosition++] = (char) jcl->getSensors()[i]->getPin()[k];
-            jcl->message[currentPosition++] = 18;
-            jcl->message[currentPosition++] = strlen(jcl->getSensors()[i]->getSensorNickname());
-            for (unsigned int k = 0; k < strlen(jcl->getSensors()[i]->getSensorNickname()); k++)
-                if (jcl->getSensors()[i]->getSensorNickname()[k] != 0)
-                    jcl->message[currentPosition++] = jcl->getSensors()[i]->getSensorNickname()[k];
+    for (i = 0; i < JCL::get_totalSensors(); i++) {
+        if (m_jcl->get_sensors()[i] != NULL) {
+            m_jcl->message[currentPosition++] = 10;
+            //strlen(Constants::sensorAliasMessage) = 13
+            int sensorPinLength = strlen(m_jcl->get_sensors()[i]->get_pin());
+            int sensorNicknameLength = strlen(m_jcl->get_sensors()[i]->get_sensorNickname());
+            m_jcl->message[currentPosition++] = 17 + sensorPinLength + sensorNicknameLength;
+            m_jcl->message[currentPosition++] = 10;
+            m_jcl->message[currentPosition++] = 13 + sensorPinLength;
+            for (unsigned int k = 0; k < 13; k++)
+                m_jcl->message[currentPosition++] = Constants::sensorAliasMessage[k];
+            for (unsigned int k = 0; k < sensorPinLength; k++)
+                m_jcl->message[currentPosition++] = (char) m_jcl->get_sensors()[i]->get_pin()[k];
+            m_jcl->message[currentPosition++] = 18;
+            m_jcl->message[currentPosition++] = sensorNicknameLength;
+            for (unsigned int k = 0; k < sensorNicknameLength; k++)
+                if (m_jcl->get_sensors()[i]->get_sensorNickname()[k] != 0)
+                    m_jcl->message[currentPosition++] = m_jcl->get_sensors()[i]->get_sensorNickname()[k];
         }
     }
 
     /* Setting the value of the SENSOR_SIZE */
-    for (i = 0; i < JCL::getTotalSensors(); i++) {
-        if (jcl->getSensors()[i] != NULL) {
-            jcl->message[currentPosition++] = 10;
-            jcl->message[currentPosition++] =
-                    strlen(Constants::sensorSizeMessage) + strlen(jcl->getSensors()[i]->getPin()) +
-                    strlen(jcl->getSensors()[i]->getSensorSize()) + 4;
-            jcl->message[currentPosition++] = 10;
-            jcl->message[currentPosition++] =
-                    strlen(Constants::sensorSizeMessage) + strlen(jcl->getSensors()[i]->getPin());
-            for (unsigned int k = 0; k < strlen(Constants::sensorSizeMessage); k++)
-                jcl->message[currentPosition++] = Constants::sensorSizeMessage[k];
-            for (unsigned int k = 0; k < strlen(jcl->getSensors()[i]->getPin()); k++)
-                jcl->message[currentPosition++] = (char) jcl->getSensors()[i]->getPin()[k];
-            jcl->message[currentPosition++] = 18;
-            jcl->message[currentPosition++] = strlen(jcl->getSensors()[i]->getSensorSize());
-            for (unsigned int k = 0; k < strlen(jcl->getSensors()[i]->getSensorSize()); k++)
-                if (jcl->getSensors()[i]->getSensorSize()[k] != 0)
-                    jcl->message[currentPosition++] = jcl->getSensors()[i]->getSensorSize()[k];
+    for (i = 0; i < JCL::get_totalSensors(); i++) {
+        if (m_jcl->get_sensors()[i] != NULL) {
+            m_jcl->message[currentPosition++] = 10;
+            //strlen(Constants::sensorSizeMessage) = 12
+            int sensorPinLength = strlen(m_jcl->get_sensors()[i]->get_pin());
+            m_jcl->message[currentPosition++] =
+                    16 + sensorPinLength +
+                    strlen(m_jcl->get_sensors()[i]->get_sensorSize());
+            m_jcl->message[currentPosition++] = 10;
+            m_jcl->message[currentPosition++] = 12 + sensorPinLength;
+            for (unsigned int k = 0; k < 12; k++)
+                m_jcl->message[currentPosition++] = Constants::sensorSizeMessage[k];
+            for (unsigned int k = 0; k < sensorPinLength; k++)
+                m_jcl->message[currentPosition++] = (char) m_jcl->get_sensors()[i]->get_pin()[k];
+            m_jcl->message[currentPosition++] = 18;
+            int sensorSizeLength = strlen(m_jcl->get_sensors()[i]->get_sensorSize());
+            m_jcl->message[currentPosition++] = sensorSizeLength;
+            for (unsigned int k = 0; k < sensorSizeLength; k++)
+                if (m_jcl->get_sensors()[i]->get_sensorSize()[k] != 0)
+                    m_jcl->message[currentPosition++] = m_jcl->get_sensors()[i]->get_sensorSize()[k];
         }
     }
 
     /* Setting the value of the SENSOR_DIR */
-    for (i = 0; i < JCL::getTotalSensors(); i++) {
-        if (jcl->getSensors()[i] != NULL) {
-            jcl->message[currentPosition++] = 10;
-            jcl->message[currentPosition++] =
-                    strlen(Constants::sensorDirMessage) + strlen(jcl->getSensors()[i]->getPin()) + 1 + 4;
-            jcl->message[currentPosition++] = 10;
-            jcl->message[currentPosition++] =
-                    strlen(Constants::sensorDirMessage) + strlen(jcl->getSensors()[i]->getPin());
-            for (unsigned int k = 0; k < strlen(Constants::sensorDirMessage); k++)
-                jcl->message[currentPosition++] = Constants::sensorDirMessage[k];
-            for (unsigned int k = 0; k < strlen(jcl->getSensors()[i]->getPin()); k++)
-                jcl->message[currentPosition++] = (char) jcl->getSensors()[i]->getPin()[k];
-            jcl->message[currentPosition++] = 18;
-            jcl->message[currentPosition++] = 1;
-            jcl->message[currentPosition++] = jcl->getSensors()[i]->getTypeIO();
+    for (i = 0; i < JCL::get_totalSensors(); i++) {
+        if (m_jcl->get_sensors()[i] != NULL) {
+            m_jcl->message[currentPosition++] = 10;
+            //strlen(Constants::sensorDirMessage) = 11
+            int sensorPinLength = strlen(m_jcl->get_sensors()[i]->get_pin());
+            m_jcl->message[currentPosition++] = 16 + sensorPinLength;
+            m_jcl->message[currentPosition++] = 10;
+            m_jcl->message[currentPosition++] = 11 + sensorPinLength;
+            for (unsigned int k = 0; k < 11; k++)
+                m_jcl->message[currentPosition++] = Constants::sensorDirMessage[k];
+            for (unsigned int k = 0; k < sensorPinLength; k++)
+                m_jcl->message[currentPosition++] = (char) m_jcl->get_sensors()[i]->get_pin()[k];
+            m_jcl->message[currentPosition++] = 18;
+            m_jcl->message[currentPosition++] = 1;
+            m_jcl->message[currentPosition++] = m_jcl->get_sensors()[i]->get_typeIO();
         }
     }
 
     /* Setting the value of the SENSOR_SAMPLING */
-    for (i = 0; i < JCL::getTotalSensors(); i++) {
-        if (jcl->getSensors()[i] != NULL) {
-            jcl->message[currentPosition++] = 10;
-            jcl->message[currentPosition++] =
-                    strlen(Constants::sensorSamplingMessage) + strlen(jcl->getSensors()[i]->getPin()) +
-                    strlen(jcl->getSensors()[i]->getDelay()) + 4;
-            jcl->message[currentPosition++] = 10;
-            jcl->message[currentPosition++] =
-                    strlen(Constants::sensorSamplingMessage) + strlen(jcl->getSensors()[i]->getPin());
-            for (unsigned int k = 0; k < strlen(Constants::sensorSamplingMessage); k++)
-                jcl->message[currentPosition++] = Constants::sensorSamplingMessage[k];
-            for (unsigned int k = 0; k < strlen(jcl->getSensors()[i]->getPin()); k++)
-                jcl->message[currentPosition++] = (char) jcl->getSensors()[i]->getPin()[k];
-            jcl->message[currentPosition++] = 18;
-            jcl->message[currentPosition++] = strlen(jcl->getSensors()[i]->getDelay());
-            for (unsigned int k = 0; k < strlen(jcl->getSensors()[i]->getDelay()); k++)
-                if (jcl->getSensors()[i]->getDelay()[k] != 0)
-                    jcl->message[currentPosition++] = jcl->getSensors()[i]->getDelay()[k];
+    for (i = 0; i < JCL::get_totalSensors(); i++) {
+        if (m_jcl->get_sensors()[i] != NULL) {
+            m_jcl->message[currentPosition++] = 10;
+            //strlen(Constants::sensorSamplingMessage) = 16
+            int sensorPinLength = strlen(m_jcl->get_sensors()[i]->get_pin());
+            int sensorDelayLength = strlen(m_jcl->get_sensors()[i]->get_delay());
+            m_jcl->message[currentPosition++] = 20 + sensorPinLength + sensorDelayLength;
+            m_jcl->message[currentPosition++] = 10;
+            m_jcl->message[currentPosition++] = 16 + sensorPinLength;
+            for (unsigned int k = 0; k < 16; k++)
+                m_jcl->message[currentPosition++] = Constants::sensorSamplingMessage[k];
+            for (unsigned int k = 0; k < sensorPinLength; k++)
+                m_jcl->message[currentPosition++] = (char) m_jcl->get_sensors()[i]->get_pin()[k];
+            m_jcl->message[currentPosition++] = 18;
+            m_jcl->message[currentPosition++] = sensorDelayLength;
+            for (unsigned int k = 0; k < sensorDelayLength; k++)
+                if (m_jcl->get_sensors()[i]->get_delay()[k] != 0)
+                    m_jcl->message[currentPosition++] = m_jcl->get_sensors()[i]->get_delay()[k];
         }
     }
 //  }
-    boolean activateEncryption = false;
-    if (jcl->isEncryption() && messageType == -1) {
-        jcl->setEncryption(false);
+    bool activateEncryption = false;
+    if (m_jcl->is_encryption() && messageType == -1) {
+        m_jcl->set_encryption(false);
         activateEncryption = true;
     }
-    size = completeHeader(currentPosition, 16, true, jcl->getMetadata()->getMAC(), 0);
+    size = completeHeader(currentPosition, 16, true, m_jcl->get_metadata()->get_mac(), 0);
 
     if (activateEncryption && messageType == -1)
-        jcl->setEncryption(true);
+        m_jcl->set_encryption(true);
 
-    jcl->getClient().write(jcl->message, size);
-    jcl->getClient().flush();
-//Serial.write(jcl->message, size);
+    m_jcl->get_client().write(m_jcl->message, size);
+    m_jcl->get_client().flush();
+//Serial.write(m_jcl->message, size);
     if (messageType == -1)
         receiveRegisterServerAnswer();
     else

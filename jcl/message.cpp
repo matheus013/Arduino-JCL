@@ -2,7 +2,14 @@
 // Created by Matheus Inácio on 2019-03-19.
 //
 
+#include "jcl.h"
 #include "message.h"
+#include "sensor.h"
+#include "crypt.h"
+#include "constants.h"
+#include <Regexp.h>
+#include "context.h"
+#include "utils.h"
 
 void (*resetFunc1)(void) = 0;
 
@@ -359,4 +366,73 @@ void Message::sendMetadata(int messageType) {
         receiveRegisterServerAnswer();
     else
         receiveServerAnswer();
+}
+
+int Message::completeHeader(int messageSize, int messageType, bool sendMAC, char *hostMAC, int superPeerPort) {
+    int addBytes;
+    char *regKey;
+    Crypt c;
+    char *iv;;
+    if (m_jcl->is_encryption()) {
+        iv = c.generateIV();
+        messageSize = c.cryptMessage(messageSize, m_jcl, iv, Crypt::hash1);
+        regKey = c.generateRegistrationKey(m_jcl->message, iv, messageSize, Crypt::hash2);
+    }
+
+    if (sendMAC && m_jcl->is_encryption())
+        addBytes = 61;
+    else if (!sendMAC && m_jcl->is_encryption())
+        addBytes = 53;
+    else if (sendMAC && !m_jcl->is_encryption())
+        addBytes = 13;
+    else
+        addBytes = 5;
+
+    for (int k = messageSize - 1; k >= 0; k--)
+        m_jcl->message[k + addBytes] = m_jcl->message[k];
+
+    uint8_t currentPosition = 4;
+    if (m_jcl->is_encryption())
+        m_jcl->message[currentPosition++] = messageType + 64;
+    else
+        m_jcl->message[currentPosition++] = messageType;
+
+    if (sendMAC) {
+        if (superPeerPort == 0) {
+            for (int i = 0; i < 8; i++)
+                m_jcl->message[currentPosition++] = 0;
+        } else {
+            char *a = (char *) &superPeerPort;
+            m_jcl->message[currentPosition++] = a[1];
+            m_jcl->message[currentPosition++] = a[0];
+
+            unsigned char mac[6];
+            sscanf(hostMAC, "%hhx-%hhx-%hhx-%hhx-%hhx-%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+            for (int i = 0; i < 6; i++)
+                m_jcl->message[currentPosition++] = mac[i];
+        }
+    }
+
+    if (m_jcl->is_encryption()) {
+        for (uint8_t it = 0; it < 16; it++)
+            m_jcl->message[currentPosition++] = iv[it];
+        for (uint8_t it = 0; it < 32; it++)
+            m_jcl->message[currentPosition++] = regKey[it];
+    }
+
+    int totalSize = messageSize + addBytes - 4;
+    char *value = (char *) &totalSize;
+
+    if (totalSize <= 255) {  // If the size is less then 256, we only need one byte to store the size
+        m_jcl->message[0] = 0;
+        m_jcl->message[1] = 0;
+        m_jcl->message[2] = 0;
+        m_jcl->message[3] = value[0];
+    } else {       // Otherwise we use two bytes to store the size (up to 32000 bytes)
+        m_jcl->message[0] = 0;
+        m_jcl->message[1] = 0;
+        m_jcl->message[2] = value[1];
+        m_jcl->message[3] = value[0];
+    }
+    return messageSize + addBytes;
 }

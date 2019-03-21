@@ -19,7 +19,7 @@ public:
     Message(JCL* jcl);
     Message(JCL* jcl, int messageSize);
     void sendMetadata(int messageType);
-//    int completeHeader(int messageSize, int messageType, boolean sendMAC, char* hostMAC, int superPeerPort);
+    int completeHeader(int messageSize, int messageType, bool sendMAC, char* hostMAC, int superPeerPort);
 //    void receiveServerAnswer();
 //    void receiveRegisterServerAnswer();
 //    void sendResultBool(boolean result);

@@ -567,3 +567,7 @@ int JCL::freeRam()
     int v;
     return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
 }
+
+Sensor **JCL::get_sensors() {
+    return this->sensors;
+}

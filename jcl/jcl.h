@@ -43,6 +43,8 @@ public:
 
     int freeRam();
 
+    Sensor** get_sensors();
+
     int numSensors;
     char message[850];
 
@@ -57,9 +59,9 @@ private:
 
     void checkContext(int pin);
 
-    boolean checkCondition(int sensorValue, char *operation, char *threshold, float lastValue);
+    bool checkCondition(int sensorValue, char *operation, char *threshold, float lastValue);
 
-ATTRIBUTE_OBJECT(char *, boardName;)
+ATTRIBUTE_OBJECT(char *, boardName)
 ATTRIBUTE_OBJECT(Metadata *, metadata)
 ATTRIBUTE_OBJECT(EthernetClient, client)
 ATTRIBUTE_OBJECT(EthernetClient, requestListener)

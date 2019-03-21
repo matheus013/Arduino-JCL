@@ -7,6 +7,6 @@
 Metadata::Metadata(){
     char name[] = "arduino", nSensors[] = "0";
     this->set_standBy(false);
-    this->set_soardName(name);
-    this->set_sumConfiguredSensors(nSensors);
+    this->set_boardName(name);
+    this->set_numConfiguredSensors(nSensors);
 }

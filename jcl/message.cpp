@@ -783,3 +783,74 @@ bool Message::setMetadata() {
     m_jcl->listSensors();
     return true;
 }
+
+bool Message::registerContext(bool isMQTTContext) {
+    int pos = 14;
+    Context *ctx = new Context();
+    while (m_jcl->message[pos] != 74)
+        pos++;
+    int nChars = m_jcl->message[++pos];
+    char *expression = (char *) malloc(sizeof(char) * nChars + 1);
+    for (uint8_t x = 0; x < nChars; x++)
+        expression[x] = m_jcl->message[x + pos + 1];
+    expression[nChars] = '\0';
+    ctx->set_expression(expression);
+    pos += nChars;
+
+    while (m_jcl->message[pos] != 74)
+        pos++;
+    nChars = m_jcl->message[++pos];
+    char pinC[nChars];
+    for (uint8_t x = 0; x < nChars; x++)
+        pinC[x] = m_jcl->message[x + pos + 1];
+    pinC[nChars] = '\0';
+    pos += nChars;
+    int pin = atoi(pinC);
+
+    if (m_jcl->get_sensors()[pin] == NULL) {
+        ctx->deleteContext();
+        sendResultBool(false);
+    } else {
+        while (m_jcl->message[pos] != 74)
+            pos++;
+        nChars = m_jcl->message[++pos];
+        char *nickname = (char *) malloc(sizeof(char) * nChars + 1);
+        for (uint8_t x = 0; x < nChars; x++)
+            nickname[x] = m_jcl->message[x + pos + 1];
+        nickname[nChars] = '\0';
+        ctx->set_nickname(nickname);
+        pos += nChars;
+
+        char *token = strtok(ctx->get_expression(), ";");
+        while (token != NULL) {
+            MatchState ms;
+            ms.Target(token);
+            char res1 = ms.Match("^S[0-9]+[><=~]=?-?[0-9]+$");
+            char res2 = ms.Match("^S[0-9]+[><=~]=?-?[0-9]+.[0-9]+$");
+            if (res1 == REGEXP_MATCHED || res2 == REGEXP_MATCHED) {
+                uint8_t current = 2, p = 0;;
+                char *operators = (char *) malloc(sizeof(char) * OPERATORS_MAX_SIZE + 1);
+                while (!((token[current] >= 48 && token[current] <= 57) || token[current] == 45))
+                    operators[p++] = token[current++];
+                operators[p] = '\0';
+                ctx->get_operators()[ctx->get_numExpressions()] = operators;
+
+                p = 0;
+                char *threshold = (char *) malloc(sizeof(char) * OPERATORS_MAX_SIZE + 1);
+                while (token[current] != '\0')
+                    threshold[p++] = token[current++];
+                threshold[p] = '\0';
+                ctx->get_threshold()[ctx->get_numExpressions()] = threshold;
+            } else
+                return false;
+
+            ctx->set_numExpressions(ctx->get_numExpressions() + 1);
+            token = strtok(NULL, ";");
+
+            ctx->set_mqttContext(isMQTTContext);
+        }
+        m_jcl->get_sensors()[pin]->getEnabledContexts()[m_jcl->get_sensors()[pin]->get_numContexts()] = ctx;
+    }
+    m_jcl->get_sensors()[pin]->set_numContexts(m_jcl->get_sensors()[pin]->get_numContexts() + 1);
+    return true;
+}

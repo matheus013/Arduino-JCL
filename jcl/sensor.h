@@ -19,15 +19,16 @@ public:
 
     void configurePinMode();
 
-    boolean digitalPin();
+    bool digitalPin();
 
-    static boolean validPin(int pin);
+    static bool validPin(int pin);
 
     int getAnalogPin();
 
     long count;
 
     string toString();
+    Context** getEnabledContexts();
 
 private:
 

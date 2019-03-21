@@ -27,7 +27,7 @@ public:
     int encode_unsigned_varint(uint8_t *const buffer, uint64_t value);
     int encode_signed_varint(uint8_t *const buffer, int64_t value);
     bool setMetadata();
-//    boolean registerContext(boolean isMQTTContext);
+    bool registerContext(bool isMQTTContext);
 //    void listen();
 //    void treatMessage();
 //    void sendResult(int result);

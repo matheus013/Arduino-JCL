@@ -8,12 +8,13 @@
 #include "action.h"
 #include "helpers.h"
 #include <string>
+using namespace std;
 
 class Context{
   public:
     Context();
     Action** getEnabledActions();
-    std:string toString();
+    string toString();
     void deleteContext();
   private:
     ATTRIBUTE_OBJECT(char*, nickname)

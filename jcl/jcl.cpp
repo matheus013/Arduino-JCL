@@ -10,8 +10,11 @@
 #include <Ethernet.h>
 #include <SPI.h>
 
-JCL::JCL(int hostPort, char *mac)
-{
+void writeEpromHelp(int *j, char *str);
+
+char *readEpromHelp(int *j);
+
+JCL::JCL(int hostPort, char *mac) {
     delay(7500);
     numSensors = 0;
     this->m_metadata = new Metadata();
@@ -28,18 +31,15 @@ JCL::JCL(int hostPort, char *mac)
         this->get_sensors()[i] = NULL;
 }
 
-void JCL::configureJCLServer(char *serverIP, int serverPort)
-{
+void JCL::configureJCLServer(char *serverIP, int serverPort) {
     m_metadata->set_serverIP(serverIP);
     char port[8];
     itoa(serverPort, port, 10);
     m_metadata->set_serverPort(port);
 }
 
-void JCL::startHost()
-{
-    if (this->is_eeprom())
-    {
+void JCL::startHost() {
+    if (this->is_eeprom()) {
         readEprom();
     }
     beginEthernet();
@@ -48,8 +48,7 @@ void JCL::startHost()
     run();
 }
 
-void JCL::readEprom()
-{
+void JCL::readEprom() {
     int addr = 0;
     int valueA = EEPROM.read(addr++);
     int numBytes;
@@ -77,8 +76,7 @@ void JCL::readEprom()
     char *serverPort = readEpromHelp(&addr);
     this->get_metadata()->set_serverPort(serverPort);
 
-    while (addr < numBytes)
-    {
+    while (addr < numBytes) {
         int pin = EEPROM.read(addr++);
         Sensor *s = new Sensor;
 
@@ -86,7 +84,7 @@ void JCL::readEprom()
 
         char *pinStr = new char[4];
         sprintf(pinStr, "%d", pin);
-        s->setPin(pinStr);
+        s->set_pin(pinStr);
 
         numSensors++;
 
@@ -105,11 +103,10 @@ void JCL::readEprom()
         s->set_numContexts(EEPROM.read(addr++));
         s->configurePinMode();
 
-        for (int numCtx = 0; numCtx < s->get_numContexts(); numCtx++)
-        {
+        for (int numCtx = 0; numCtx < s->get_numContexts(); numCtx++) {
             Context *ctx = new Context();
 
-            s->get_enabledContexts()[numCtx] = ctx;
+            s->getEnabledContexts()[numCtx] = ctx;
 
             char *ctxName = readEpromHelp(&addr);
             ctx->set_nickname(ctxName);
@@ -119,8 +116,7 @@ void JCL::readEprom()
 
             ctx->set_numExpressions(EEPROM.read(addr++));
 
-            for (int numExp = 0; numExp < ctx->get_numExpressions(); numExp++)
-            {
+            for (int numExp = 0; numExp < ctx->get_numExpressions(); numExp++) {
                 char *op = readEpromHelp(&addr);
                 ctx->get_operators()[numExp] = op;
 
@@ -129,10 +125,9 @@ void JCL::readEprom()
             }
 
             ctx->set_numActions(EEPROM.read(addr++));
-            for (int numActions = 0; numActions < ctx->get_numActions(); numActions++)
-            {
+            for (int numActions = 0; numActions < ctx->get_numActions(); numActions++) {
                 Action *act = new Action();
-                ctx->get_enabledActions()[numActions] = act;
+                ctx->getEnabledActions()[numActions] = act;
 
                 act->set_acting(EEPROM.read(addr++));
 
@@ -142,12 +137,12 @@ void JCL::readEprom()
                 char *hostPortAct = readEpromHelp(&addr);
                 act->set_hostPort(hostPortAct);
 
-                if (!act->is_acting())
-                {
+                char nChars;
+                if (!act->is_acting()) {
                     act->set_useSensorValue(EEPROM.read(addr++));
 
                     char *hostMACAct = readEpromHelp(&addr);
-                    act->set_hostMAC(hostMACAct);
+                    act->set_hostMac(hostMACAct);
 
                     char *ticket = readEpromHelp(&addr);
                     act->set_ticket(ticket);
@@ -177,8 +172,7 @@ void JCL::readEprom()
     Serial.println(numSensors);
 }
 
-void JCL::writeEprom()
-{
+void JCL::writeEprom() {
     uint16_t addr = 0;
     unsigned int i;
     EEPROM.write(addr++, 1); // Indicates that there's information on EEPROM
@@ -187,56 +181,51 @@ void JCL::writeEprom()
     EEPROM.write(addr++, Constants::SEPARATOR);
     EEPROM.write(addr++, Constants::SEPARATOR);
 
-    writeEpromHelp(&addr, getMetadata()->get_boardName());
-    writeEpromHelp(&addr, getMetadata()->get_hostIP());
-    writeEpromHelp(&addr, getMetadata()->get_hostPort());
-    writeEpromHelp(&addr, getMetadata()->get_serverIP());
-    writeEpromHelp(&addr, getMetadata()->get_serverPort());
+    writeEpromHelp(&addr, get_metadata()->get_boardName());
+    writeEpromHelp(&addr, get_metadata()->get_hostIP());
+    writeEpromHelp(&addr, get_metadata()->get_hostPort());
+    writeEpromHelp(&addr, get_metadata()->get_serverIP());
+    writeEpromHelp(&addr, get_metadata()->get_serverPort());
     // writeEpromHelp(&addr, getMetadata()->getHostIP());
 
     for (int k = 0; k < TOTAL_SENSORS; k++)
-        if (sensors[k] != NULL)
-        {
+        if (sensors[k] != NULL) {
             Sensor *s = get_sensors()[k];
             EEPROM.write(addr++, k);
             writeEpromHelp(&addr, s->get_sensorNickname());
 
             EEPROM.write(addr++, s->get_typeIO());
-            EEPROM.write(addr++, (char)s->get_type());
+            EEPROM.write(addr++, (char) s->get_type());
 
             writeEpromHelp(&addr, s->get_delay());
             writeEpromHelp(&addr, s->get_sensorSize());
 
             EEPROM.write(addr++, s->get_numContexts());
 
-            for (int numCtx = 0; numCtx < s->get_numContexts(); numCtx++)
-            {
-                Context *ctx = s->get_enabledContexts()[numCtx];
+            for (int numCtx = 0; numCtx < s->get_numContexts(); numCtx++) {
+                Context *ctx = s->getEnabledContexts()[numCtx];
                 writeEpromHelp(&addr, ctx->get_nickname());
                 writeEpromHelp(&addr, ctx->get_expression());
 
                 EEPROM.write(addr++, ctx->get_numExpressions());
 
-                for (int numExp = 0; numExp < ctx->get_numExpressions(); numExp++)
-                {
+                for (int numExp = 0; numExp < ctx->get_numExpressions(); numExp++) {
                     writeEpromHelp(&addr, ctx->get_operators()[numExp]);
                     writeEpromHelp(&addr, ctx->get_threshold()[numExp]);
                 }
 
                 EEPROM.write(addr++, ctx->get_numActions());
 
-                for (int numActions = 0; numActions < ctx->get_numActions(); numActions++)
-                {
-                    Action *act = ctx->get_enabledActions()[numActions];
+                for (int numActions = 0; numActions < ctx->get_numActions(); numActions++) {
+                    Action *act = ctx->getEnabledActions()[numActions];
 
                     EEPROM.write(addr++, act->is_acting());
                     writeEpromHelp(&addr, act->get_hostIP());
                     writeEpromHelp(&addr, act->get_hostPort());
 
-                    if (!act->is_acting())
-                    {
+                    if (!act->is_acting()) {
                         EEPROM.write(addr++, act->is_useSensorValue());
-                        writeEpromHelp(&addr, act->get_hostMAC());
+                        writeEpromHelp(&addr, act->get_hostMac());
                         writeEpromHelp(&addr, act->get_ticket());
                         writeEpromHelp(&addr, act->get_classNameSize());
                         writeEpromHelp(&addr, act->get_methodNameSize());
@@ -250,79 +239,63 @@ void JCL::writeEprom()
     EEPROM.write(2, addr & 0xFF);
 }
 
-void JCL::changeBoardNickname(char *boardName)
-{
-    metadata->set_boardName(boardName);
+void JCL::changeBoardNickname(char *boardName) {
+    m_metadata->set_boardName(boardName);
 }
 
-void JCL::beginEthernet()
-{
+void JCL::beginEthernet() {
     Serial.println("DHCP");
-    if (Ethernet.begin(Utils::macAsByteArray(metadata->get_mac())) != 0)
-    {
+    if (Ethernet.begin(Utils::macAsByteArray(m_metadata->get_mac())) != 0) {
         IPAddress adr = Ethernet.localIP();
-        sprintf(metadata->get_hostIP(), "%d.%d.%d.%d", (int)adr[0], (int)adr[1], (int)adr[2], (int)adr[3]);
-        Serial.println((int)adr[0]);
-        Serial.println(metadata->get_hostIP());
-    }
-    else
-    {
+        sprintf(m_metadata->get_hostIP(), "%d.%d.%d.%d", (int) adr[0], (int) adr[1], (int) adr[2], (int) adr[3]);
+        Serial.println((int) adr[0]);
+        Serial.println(m_metadata->get_hostIP());
+    } else {
         Serial.println("Could not get IP address through DHCP");
-        for (;;)
-            ;
+        for (;;);
     }
 }
 
-void JCL::connectToServer()
-{
-    int *ip = Utils::getIPAsArray(metadata->get_serverIP());
-    while (!client.connected())
-    {
+void JCL::connectToServer() {
+    int *ip = Utils::getIPAsArray(m_metadata->get_serverIP());
+    while (!m_client.connected()) {
         Serial.print("Server: ");
-        Serial.print(metadata->get_serverIP());
+        Serial.print(m_metadata->get_serverIP());
         Serial.print("  ");
-        Serial.println(metadata->get_serverPort());
-        client.connect(IPAddress(ip[0], ip[1], ip[2], ip[3]), atoi(metadata->get_serverPort()));
-        if (millis() >= 12000 && !client.connected())
-        {
+        Serial.println(m_metadata->get_serverPort());
+        client.connect(IPAddress(ip[0], ip[1], ip[2], ip[3]), atoi(m_metadata->get_serverPort()));
+        if (millis() >= 12000 && !m_client.connected()) {
             Serial.println("Not Connected");
             break;
             // Message::printMessagePROGMEM(Constants::connectionErrorMessage);
-        }
-        else if (client.connected())
-        {
+        } else if (m_client.connected()) {
             Serial.println("Connected");
             // Message::printMessagePROGMEM(Constants::connectedMessage);
             break;
         }
     }
-    while (!client.connected())
-    {
+    while (!m_client.connected()) {
         sendBroadcastMessage();
-        Serial.println(metadata->get_serverIP());
-        Serial.println(metadata->get_serverPort());
-        ip = Utils::getIPAsArray(metadata->get_serverIP());
-        client.connect(IPAddress(ip[0], ip[1], ip[2], ip[3]), atoi(metadata->get_serverPort()));
+        Serial.println(m_metadata->get_serverIP());
+        Serial.println(m_metadata->get_serverPort());
+        ip = Utils::getIPAsArray(m_metadata->get_serverIP());
+        m_client.connect(IPAddress(ip[0], ip[1], ip[2], ip[3]), atoi(m_metadata->get_serverPort()));
         delay(100);
     }
     Message msg(this);
     msg.sendMetadata(-1);
 }
 
-void JCL::listSensors()
-{
+void JCL::listSensors() {
     // Message::printMessagePROGMEM(Constants::configuredSensorsMessage);
     Serial.print("free: ");
     Serial.println(freeRam());
-    for (int i = 0; i < TOTAL_SENSORS; i++)
-    {
-        if (sensors[i] != NULL)
-        {
-            Serial.println(sensors[i].toString()) for (int k = 0; k < sensors[i]->getNumContexts(); k++)
-            {
+    for (int i = 0; i < TOTAL_SENSORS; i++) {
+        if (sensors[i] != NULL) {
+            Serial.println(sensors[i].toString())
+            for (int k = 0; k < sensors[i]->getNumContexts(); k++) {
                 Serial.println(sensors[i]->get_enabledContexts()[k]->toString());
-                for (int y = 0; y < sensors[i]->get_enabledContexts()[k]->getNumExpressions(); y++)
-                {
+                for (int y = 0; y < sensors[i]->get_enabledContexts()[k]->getNumExpressions(); y++) {
                     Serial.print("   ||");
                     Serial.print(sensors[i]->get_enabledContexts()[k]->get_operators()[y]);
                     Serial.println(sensors[i]->get_enabledContexts()[k]->get_threshold()[y]);
@@ -333,41 +306,34 @@ void JCL::listSensors()
     }
 }
 
-void JCL::run()
-{
+void JCL::run() {
     EthernetServer s(atoi(get_metadata()->get_hostPort()));
     s.begin();
-    while (true)
-    {
-        if (!this->get_metadata()->is_standBy())
-        {
+    while (true) {
+        if (!this->get_metadata()->is_standBy()) {
             this->makeSensing();
         }
         int currentPosition = 0;
-        this->requestListener = s.available();
-        if (requestListener)
-        {
-            while (this->requestListener.available())
-            {
-                message[currentPosition++] = (char)this->requestListener.read();
+        this->m_requestListener = s.available();
+        if (m_requestListener) {
+            while (this->m_requestListener.available()) {
+                message[currentPosition++] = (char) this->m_requestListener.read();
             }
             Message msg(this, currentPosition);
             msg.treatMessage();
         }
     }
 }
-void JCL::conectToBroker()
-{
-    mqtt = new PubSubClient(mqttEthClient);
 
-    mqtt->setServer(get_metadata()->get_brokerIP(), metadata->get_brokerPort());
+void JCL::conectToBroker() {
+    m_mqtt = new PubSubClient(mqttEthClient);
+
+    m_mqtt->setServer(get_metadata()->get_brokerIP(), m_metadata->get_brokerPort());
     Serial.println(get_metadata()->get_brokerIP());
     Serial.println(get_metadata()->get_brokerPort());
 
-    for (int i = 0; i < 4; i++)
-    {
-        if (mqtt->connect(get_metadata()->get_boardName()))
-        {
+    for (int i = 0; i < 4; i++) {
+        if (m_mqtt->connect(get_metadata()->get_boardName())) {
             Serial.println("connected");
             break;
         }
@@ -375,8 +341,7 @@ void JCL::conectToBroker()
     }
 }
 
-void JCL::sendBroadcastMessage()
-{
+void JCL::sendBroadcastMessage() {
     Serial.println("Server Discovery");
     int UDP_PORT = 9696;
     char packetBuffer[18];
@@ -384,19 +349,16 @@ void JCL::sendBroadcastMessage()
     EthernetUDP udp;
     udp.begin(UDP_PORT);
     IPAddress broadcastIp(255, 255, 255, 255);
-    while (true)
-    {
+    while (true) {
         udp.beginPacket(broadcastIp, UDP_PORT);
         udp.write("SERVERMAINPORT\n");
         udp.endPacket();
         int pos = 0;
         int packetSize = udp.parsePacket();
-        if (packetSize)
-        {
+        if (packetSize) {
             IPAddress remote = udp.remoteIP();
             char ip[18], port[8];
-            for (int i = 0; i < 4; i++)
-            {
+            for (int i = 0; i < 4; i++) {
                 char part[4];
                 sprintf(part, "%d", remote[i]);
                 for (int k = 0; k < strlen(part); k++)
@@ -411,8 +373,8 @@ void JCL::sendBroadcastMessage()
             for (int k = 0; k < packetSize; k++)
                 port[pos++] = packetBuffer[k];
             port[pos] = '\0';
-            metadata->set_serverIP(ip);
-            metadata->set_serverPort(port);
+            m_metadata->set_serverIP(ip);
+            m_metadata->set_serverPort(port);
             Serial.println(ip);
             Serial.println(port);
             break;
@@ -422,17 +384,14 @@ void JCL::sendBroadcastMessage()
     udp.stop();
 }
 
-void JCL::makeSensing()
-{
-    for (int i = 0; i < TOTAL_SENSORS; i++)
-    {
+void JCL::makeSensing() {
+    for (int i = 0; i < TOTAL_SENSORS; i++) {
         Sensor *s = this->get_sensors()[i];
 
         if (s != NULL)
             checkContext(i);
 
-        if (s != NULL && millis() - s->get_lastExecuted() >= atoi(s->get_delay()))
-        {
+        if (s != NULL && millis() - s->get_lastExecuted() >= atoi(s->get_delay())) {
             unsigned long currentMillis = millis();
 
             Message m(this);
@@ -441,48 +400,34 @@ void JCL::makeSensing()
     }
 }
 
-void JCL::checkContext(int pin)
-{
-    if (sensors[pin] != NULL)
-    {
-        for (uint16_t x = 0; x < sensors[pin]->get_numContexts(); x++)
-        {
+void JCL::checkContext(int pin) {
+    if (sensors[pin] != NULL) {
+        for (uint16_t x = 0; x < sensors[pin]->get_numContexts(); x++) {
             int sensorValue;
-            if (pin >= TOTAL_DIGITAL_SENSORS)
-            {
+            if (pin >= TOTAL_DIGITAL_SENSORS) {
                 sensorValue = analogRead(pin - TOTAL_DIGITAL_SENSORS);
-            }
-            else
+            } else
                 sensorValue = digitalRead(pin);
-            Context *c = sensors[pin]->get_enabledContexts()[x];
-            if (checkCondition(sensorValue, c->get_operators()[0], c->get_threshold()[0], sensors[pin]->get_value()))
-            {
-                if (c->is_mqttContext())
-                {
-                    if (mqtt->connected())
-                    {
+            Context *c = sensors[pin]->getEnabledContexts()[x];
+            if (checkCondition(sensorValue, c->get_operators()[0], c->get_threshold()[0], sensors[pin]->get_value())) {
+                if (c->is_mqttContext()) {
+                    if (m_mqtt->connected()) {
                         char mqttMessage[6];
                         sprintf(mqttMessage, "%d", sensorValue);
-                        mqtt->publish(c->get_nickname(), mqttMessage);
+                        m_mqtt->publish(c->get_nickname(), mqttMessage);
                     }
-                }
-                else if (!c->is_triggered())
-                {
+                } else if (!c->is_triggered()) {
                     Serial.println("** Context reached **");
-                    for (uint8_t l = 0; l < c->get_numActions(); l++)
-                    {
+                    for (uint8_t l = 0; l < c->get_numActions(); l++) {
                         Message m(this);
-                        m.sendContextActionMessage(c->get_enabledActions()[l]);
+                        m.sendContextActionMessage(c->getEnabledActions()[l]);
                     }
                 }
                 c->set_triggered(true);
-            }
-            else
-            {
-                if (c->is_mqttContext() && c->is_triggered())
-                {
+            } else {
+                if (c->is_mqttContext() && c->is_triggered()) {
                     char m[] = "done";
-                    mqtt->publish(c->get_nickname(), m);
+                    m_mqtt->publish(c->get_nickname(), m);
                 }
                 c->set_triggered(false);
             }
@@ -490,82 +435,64 @@ void JCL::checkContext(int pin)
     }
 }
 
-boolean JCL::checkCondition(int sensorValue, char *operation, char *threshold, float lastValue)
-{
-    if (strcmp(operation, ">") == 0)
-    {
-        if (sensorValue > atoi(threshold))
+bool JCL::checkCondition(int sensorValue, char *operation, char *threshold, float lastValue) {
+
+    int theresholdINT = atoi(threshold);
+    if (strcmp(operation, ">") == 0) {
+        if (sensorValue > theresholdINT)
             return true;
-    }
-    else if (strcmp(operation, "<") == 0)
-    {
-        if (sensorValue < atoi(threshold))
+    } else if (strcmp(operation, "<") == 0) {
+        if (sensorValue < theresholdINT)
             return true;
-    }
-    else if (strcmp(operation, "=") == 0)
-    {
-        if (sensorValue == atoi(threshold))
+    } else if (strcmp(operation, "=") == 0) {
+        if (sensorValue == theresholdINT)
             return true;
-    }
-    else if (strcmp(operation, "<=") == 0)
-    {
-        if (sensorValue <= atoi(threshold))
+    } else if (strcmp(operation, "<=") == 0) {
+        if (sensorValue <= theresholdINT)
             return true;
-    }
-    else if (strcmp(operation, ">=") == 0)
-    {
-        if (sensorValue >= atoi(threshold))
+    } else if (strcmp(operation, ">=") == 0) {
+        if (sensorValue >= theresholdINT)
             return true;
-    }
-    else if (strcmp(operation, "~") == 0)
-    {
-        if (abs(sensorValue - lastValue) >= atoi(threshold))
+    } else if (strcmp(operation, "~") == 0) {
+        if (abs(sensorValue - lastValue) >= theresholdINT)
             return true;
     }
     return false;
 }
 
-char *readEpromHelp(int *j)
-{
-    int nChars = EEPROM.read(*j++);
+char *readEpromHelp(int *j) {
+    int nChars = EEPROM.read((*j)++);
     char *result = new char[nChars + 1];
-    for (int i = 0; i < nChars; i++)
-    {
-        result[i] = EEPROM.read(*j++);
+    for (int i = 0; i < nChars; i++) {
+        result[i] = EEPROM.read((*j)++);
     }
     result[nChars] = '\0';
     return result;
 }
 
-void writeEpromHelp(int *j, char *str)
-{
-    EEPROM.write(*j++, strlen(str));
-    for (i = 0; i < strlen(str); i++)
-    {
-        EEPROM.write(*j++, str[i]);
+void writeEpromHelp(int *j, char *str) {
+    EEPROM.write((*j)++, strlen(str));
+    for (int i = 0; i < strlen(str); i++) {
+        EEPROM.write((*j)++, str[i]);
     }
 }
 
-int JCL::get_totalSensors()
-{
+int JCL::get_totalSensors() {
     return TOTAL_SENSORS;
 }
 
-int JCL::get_totalDigitalSensors()
-{
+int JCL::get_totalDigitalSensors() {
     return TOTAL_DIGITAL_SENSORS;
 }
 
-void JCL::useEEPROM(bool useEEPROM)
-{
+void JCL::useEEPROM(bool useEEPROM) {
     set_eeprom(useEEPROM);
 }
 
-int JCL::freeRam()
-{
+int JCL::freeRam() {
     extern int __heap_start, *__brkval;
     int v;
-    return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+    return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
 
 Sensor **JCL::get_sensors() {

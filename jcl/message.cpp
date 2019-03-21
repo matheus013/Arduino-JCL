@@ -436,3 +436,350 @@ int Message::completeHeader(int messageSize, int messageType, bool sendMAC, char
     }
     return messageSize + addBytes;
 }
+
+void Message::receiveRegisterServerAnswer() {
+    char *key;
+    if (m_jcl->get_client()) {
+        int16_t pos = 0;
+        while (!m_jcl->get_client().available());
+        while (m_jcl->get_client().available())
+            m_jcl->message[pos++] = (char) m_jcl->get_client().read();
+
+        key = (char *) malloc(sizeof(char) * 18);
+        for (uint16_t x = 0; x < 17; x++)
+            key[x] = m_jcl->message[pos - 17 + x];
+        key[17] = '\0';
+    }
+    m_jcl->set_key(key);
+    Crypt::update(m_jcl);
+}
+
+void Message::receiveServerAnswer() {
+    while (!m_jcl->get_client().available());
+    while (m_jcl->get_client().available())
+        m_jcl->get_client().read();
+}
+
+void Message::sendResultBool(bool result) {
+    int size;
+    int currentPosition = 0;
+
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = 4;
+    m_jcl->message[currentPosition++] = 8;
+    m_jcl->message[currentPosition++] = 1;
+    m_jcl->message[currentPosition++] = 16;
+    if (result)
+        m_jcl->message[currentPosition++] = 1;
+    else
+        m_jcl->message[currentPosition++] = 0;
+
+    size = completeHeader(currentPosition, 11, false, m_jcl->get_metadata()->get_mac(), 0);
+
+    m_jcl->get_requestListener().write(m_jcl->message, size);
+    m_jcl->get_requestListener().flush();
+}
+
+void Message::sensing(int pin, bool sensorNow) {
+//Serial.print("sensing: "); Serial.println(pin);
+    int size;
+    unsigned int i;
+    int currentPosition = 0;
+    if (m_jcl->get_sensors()[pin] == NULL || m_jcl->get_sensors()[pin]->get_typeIO() == Constants::CHAR_OUTPUT)
+        return;
+
+    m_jcl->message[currentPosition++] = 8; // Indicates first field
+    m_jcl->message[currentPosition++] = 27;  // Fix field. Also indicates sensing data
+
+    m_jcl->message[currentPosition++] = 18; // Indicates second field. In this case is a string with MAC and PORT
+    int metadataHostPortLength = strlen(m_jcl->get_metadata()->get_hostPort());
+    int metadataMacLength = strlen(m_jcl->get_metadata()->get_mac());
+    m_jcl->message[currentPosition++] = metadataHostPortLength + metadataMacLength; // Indicates the size of the string
+
+    for (i = 0; i < metadataMacLength; i++)
+        m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_mac()[i];
+
+    for (i = 0; i < metadataHostPortLength; i++)
+        m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_hostPort()[i];
+
+    m_jcl->message[currentPosition++] = 24; // Indicates third field. In this case is the ID of the sensor
+    m_jcl->message[currentPosition++] = pin;
+
+    m_jcl->message[currentPosition++] = 34; // Indicates fourth field. In this case the value of the sensing
+
+    uint8_t array[10];
+    int sensorValue;
+    if (pin >= JCL::get_totalDigitalSensors()) {
+        sensorValue = analogRead(pin - JCL::get_totalDigitalSensors());
+    } else
+        sensorValue = digitalRead(pin);
+
+    int totalBytes = encode_unsigned_varint(array, sensorValue);
+    m_jcl->message[currentPosition++] = totalBytes + 1;
+    m_jcl->message[currentPosition++] = 40;
+    for (int i = 0; i < totalBytes; i++)
+        m_jcl->message[currentPosition++] = (int) array[i];
+
+    m_jcl->message[currentPosition++] = 40; // Indicates fifth field. In this case the time in long
+    uint8_t arrayInt[10];
+    int total = encode_signed_varint(arrayInt, millis());
+    for (int i = 0; i < total; i++)
+        m_jcl->message[currentPosition++] = arrayInt[i];
+
+    m_jcl->message[currentPosition++] = 50; // Indicates sixth field. In this case the data type in a String format
+    //strlen(Constants::dataTypeValue) = 3
+    m_jcl->message[currentPosition++] = 3;     // Indicates the size of the String
+    for (i = 0; i < 3; i++)
+        m_jcl->message[currentPosition++] = Constants::dataTypeValue[i];
+
+    if (sensorNow) {
+        size = completeHeader(currentPosition, 15, false, m_jcl->get_metadata()->get_mac(), 0);
+        m_jcl->get_requestListener().write(m_jcl->message, size);
+        m_jcl->get_requestListener().flush();
+    } else {
+        size = completeHeader(currentPosition, 15, true, m_jcl->get_metadata()->get_mac(), 0);
+
+        m_jcl->get_sensors()[pin]->count++;
+        m_jcl->get_client().write(m_jcl->message, size);
+        m_jcl->get_client().flush();
+        m_jcl->get_sensors()[pin]->set_lastExecuted(millis());
+    }
+    m_jcl->get_sensors()[pin]->set_value(sensorValue);
+    if (!sensorNow)
+        receiveServerAnswer();
+}
+
+int Message::encode_unsigned_varint(uint8_t *const buffer, uint64_t value) {
+    int encoded = 0;
+    do {
+        uint8_t next_byte = value & 0x7F;
+        value >>= 7;
+        if (value)
+            next_byte |= 0x80;
+        buffer[encoded++] = next_byte;
+    } while (value);
+    return encoded;
+}
+
+int Message::encode_signed_varint(uint8_t *const buffer, int64_t value) {
+    uint64_t uvalue;
+    uvalue = uint64_t(value < 0 ? ~(value << 1) : (value << 1));
+    return encode_unsigned_varint(buffer, uvalue);
+}
+
+bool Message::setMetadata() {
+    char *pointer;
+    char *pin;
+    char value[4];
+    int pos = 0;
+    Sensor *s;
+
+    for (int i = 0; i < JCL::get_totalSensors(); i++)
+        if (m_jcl->get_sensors()[i] != NULL) {
+            m_jcl->get_sensors()[i]->deleteSensor();
+            m_jcl->get_sensors()[i] = NULL;
+        }
+
+    m_jcl->message[0] = 52;
+    m_jcl->message[1] = 52;
+    for (int i = 0; i < 17; i++)
+        m_jcl->message[i] = 52;
+
+    pointer = strstr(m_jcl->message, "DEVICE_ID");
+    if (pointer != NULL) {
+        int c = 0;
+        while (pointer[c] != 18)
+            c++;
+        c++;
+        int l = pointer[c];
+        c++;
+        char *nameBoard = (char *) malloc(sizeof(char) * l + 1);
+        for (int i = 0; i < l; i++)
+            nameBoard[i] = pointer[c++];
+        nameBoard[l] = '\0';
+        m_jcl->get_metadata()->set_boardName(nameBoard);
+    }
+
+    pointer = strstr(m_jcl->message, "ENABLE_SENSOR");
+    if (pointer != NULL) {
+        int c = 0;
+        while (pointer[c] != 18)
+            c++;
+        c++;
+        int l = pointer[c];
+        c++;
+        pos = 0;
+        uint8_t numSensors = 0;
+
+        pin = (char *) malloc(sizeof(char) * 4);
+
+        for (int i = 0; i <= l; i++) {
+            if (pointer[c] == ';' || i == l) {
+                //pin[pos] = '\0';
+                if (!Sensor::validPin(atoi(pin)))
+                    return false;
+                s = new Sensor();
+                char *pinN = (char *) malloc(sizeof(char) * 4);
+                strcpy(pinN, pin);
+                int pinAux = atoi(pinN);
+                m_jcl->get_sensors()[pinAux] = s;
+                //m_jcl->getSensors()[atoi(pin)]->setPin(pin);
+                s->set_pin(pinN);
+
+                m_jcl->get_sensors()[pinAux]->set_lastExecuted(0);
+                char defaultName[] = "not set",
+                        defaultDelay[] = "60",
+                        defaultSensorSize[] = "1";
+                m_jcl->get_sensors()[pinAux]->set_sensorNickname(
+                        defaultName);   // In case the user didn't set the sensor name we use the default
+                m_jcl->get_sensors()[pinAux]->set_delay(
+                        defaultDelay);   // In case the user didn't set the delay we use the default 60
+                m_jcl->get_sensors()[pinAux]->set_typeIO(Constants::CHAR_INPUT);   // the default is input sensor
+                m_jcl->get_sensors()[pinAux]->set_type(0);   // default is generic sensor
+                m_jcl->get_sensors()[pinAux]->set_sensorSize(defaultSensorSize);   // default is 1MB
+                pos = 0;
+                c++;
+                numSensors++;
+            } else {
+                pin[pos++] = pointer[c++];
+                pin[pos] = '\0';
+            }
+        }
+        char nSensors[4];
+        sprintf(nSensors, "%d", numSensors);
+        m_jcl->get_metadata()->set_numConfiguredSensors(nSensors);
+    }
+
+    pointer = m_jcl->message;
+
+    while ((pointer = strstr(pointer, "SENSOR_SAMPLING_")) != NULL) {
+        int c = 16;
+        pos = 0;
+        while (pointer[c] != 18) {
+            pin[pos++] = pointer[c++];
+        }
+        pin[pos] = '\0';
+
+        /* Verificar se é para criar mesmo quando não estiver no ENABLE_SENSOR ou se é para retornar false*/
+        s = m_jcl->get_sensors()[atoi(pin)];
+        if (s == NULL) {
+            return false;
+        }
+
+        c++;
+        int l = pointer[c++];
+        char *delay = (char *) malloc(sizeof(char) * l + 1);
+        pos = 0;
+        for (int i = 0; i < l; i++) {
+            delay[pos++] = pointer[c++];
+        }
+        delay[pos] = '\0';
+
+        s->set_delay(delay);
+        pointer++;
+    }
+
+    pointer = m_jcl->message;
+    while ((pointer = strstr(pointer, "SENSOR_ALIAS_")) != NULL) {
+        int c = 13;
+        pos = 0;
+        while (pointer[c] != 18) {
+            pin[pos++] = pointer[c++];
+        }
+        pin[pos] = '\0';
+        int pinAux = atoi(pin);
+        if (!Sensor::validPin(pinAux) || m_jcl->get_sensors()[pinAux] == NULL) {
+            return false;
+        }
+        s = m_jcl->get_sensors()[pinAux];
+        c++;
+        int l = pointer[c++];
+        char *nameSensor = (char *) malloc(sizeof(char) * l + 1);
+        pos = 0;
+        for (int i = 0; i < l; i++) {
+            nameSensor[pos++] = pointer[c++];
+        }
+        nameSensor[pos] = '\0';
+        s->set_sensorNickname(nameSensor);
+        pointer++;
+    }
+
+    pointer = m_jcl->message;
+    while ((pointer = strstr(pointer, "SENSOR_SIZE_")) != NULL) {
+        int c = 12;
+        pos = 0;
+        while (pointer[c] != 18) {
+            pin[pos++] = pointer[c++];
+        }
+        pin[pos] = '\0';
+        int pinAux = atoi(pin);
+        if (!Sensor::validPin(pinAux) || m_jcl->get_sensors()[pinAux] == NULL) {
+            return false;
+        }
+        s = m_jcl->get_sensors()[pinAux];
+        c++;
+        int l = pointer[c++];
+        char *sensorSize = (char *) malloc(sizeof(char) * l + 1);
+        pos = 0;
+        for (int i = 0; i < l; i++) {
+            sensorSize[pos++] = pointer[c++];
+        }
+        sensorSize[pos] = '\0';
+        s->set_sensorSize(sensorSize);
+        pointer++;
+    }
+
+    pointer = m_jcl->message;
+    while ((pointer = strstr(pointer, "SENSOR_TYPE_")) != NULL) {
+        int c = 12;
+        pos = 0;
+        while (pointer[c] != 18) {
+            pin[pos++] = pointer[c++];
+        }
+        pin[pos] = '\0';
+        int pinAux = atoi(pin);
+        if (!Sensor::validPin(pinAux) || m_jcl->get_sensors()[pinAux] == NULL) {
+            return false;
+        }
+        s = m_jcl->get_sensors()[pinAux];
+        c++;
+        int l = pointer[c++];
+
+        pos = 0;
+        for (int i = 0; i < l; i++) {
+            value[pos++] = pointer[c++];
+        }
+        value[pos] = '\0';
+        s->set_type(atoi(value));
+        pointer++;
+    }
+
+    pointer = m_jcl->message;
+    while ((pointer = strstr(pointer, "SENSOR_DIR_")) != NULL) {
+        int c = 11;
+        pos = 0;
+        while (pointer[c] != 18) {
+            pin[pos++] = pointer[c++];
+        }
+        pin[pos] = '\0';
+        int pinAux = atoi(pin);
+        if (!Sensor::validPin(pinAux) || m_jcl->get_sensors()[pinAux] == NULL) {
+            return false;
+        }
+        s = m_jcl->get_sensors()[pinAux];
+        c++;
+        c++;
+
+        pos = 0;
+        s->set_typeIO(toUpperCase(pointer[c++]));
+
+        if (s->get_typeIO() != Constants::CHAR_OUTPUT && s->get_typeIO() != Constants::CHAR_INPUT)
+            s->set_typeIO(Constants::CHAR_INPUT);
+
+        s->configurePinMode();
+        pointer++;
+    }
+
+    m_jcl->listSensors();
+    return true;
+}

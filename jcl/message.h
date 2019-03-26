@@ -28,15 +28,15 @@ public:
     int encode_signed_varint(uint8_t *const buffer, int64_t value);
     bool setMetadata();
     bool registerContext(bool isMQTTContext);
-//    void listen();
-//    void treatMessage();
-//    void sendResult(int result);
-//    static void printMessagePROGMEM(const char *m);
-//    bool messageSetSensor();
-//    void sendContextActionMessage(Action* act);
-//    void unregister();
-//    bool unregisterContext(boolean isMQTTContext);
-//    bool removeContextAction(bool isActing);
+    void listen();
+    void treatMessage();
+    void sendResult(int result);
+    static void printMessagePROGMEM(const char *m);
+    bool messageSetSensor();
+    void sendContextActionMessage(Action* act);
+    void unregister();
+    bool unregisterContext(bool isMQTTContext);
+    bool removeContextAction(bool isActing);
 private:
     ATTRIBUTE_OBJECT(int, messageSize)
     ATTRIBUTE_OBJECT(JCL*, jcl)

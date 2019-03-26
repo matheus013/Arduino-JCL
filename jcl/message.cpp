@@ -2,7 +2,7 @@
 // Created by Matheus Inácio on 2019-03-19.
 //
 
-#include "jcl.h"
+#include "m_jcl.h"
 #include "message.h"
 #include "sensor.h"
 #include "crypt.h"
@@ -853,4 +853,1091 @@ bool Message::registerContext(bool isMQTTContext) {
     }
     m_jcl->get_sensors()[pin]->set_numContexts(m_jcl->get_sensors()[pin]->get_numContexts() + 1);
     return true;
+}
+
+void Message::treatMessage() {
+    int key = m_jcl->message[4] & 0x3F;
+    int crypt = ((m_jcl->message[4] >> 6) & 0x03);
+    int typePosition = 14;
+    Crypt c;
+    if (crypt == 1) {
+        this->m_messageSize = c.decryptMessage(this->m_messageSize, m_jcl);
+        if (m_messageSize == -1) {
+            sendResultBool(false);
+            return;
+        }
+        m_jcl->message[4] = key;
+    }
+
+    switch (m_jcl->message[typePosition]) {
+        case 44: { // SensorNow
+            Serial.println("SensorNow");
+            int msgSize = m_jcl->message[3];
+            int pos = msgSize - 1;
+            while (m_jcl->message[pos] != 74)
+                pos--;
+            int nChars = m_jcl->message[++pos];
+            char pinC[nChars + 1];
+            pos++;
+            for (uint8_t x = 0; x < nChars; x++)
+                pinC[x] = m_jcl->message[x + pos];
+            pinC[nChars] = '\0';
+            sensing(atoi(pinC), true);
+            break;
+        }
+        case 45: {   // Message TurnOn
+            // printMessagePROGMEM(Constants::turnOnMessage);
+            Serial.println("TurnOn");
+            m_jcl->get_metadata()->set_standBy(false);
+
+            sendMetadata(40);
+            sendResult(101);
+            break;
+        }
+        case 46: {  // Message StandBy
+            // printMessagePROGMEM(Constants::standByMessageListen);
+            Serial.println("StandBy");
+            m_jcl->get_metadata()->set_standBy(true);
+            sendMetadata(40);
+            sendResult(102);
+            break;
+        }
+        case 47: {   //SetMetadata
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::setMetadataMessage);
+                Serial.println("SetMetadata");
+                bool b = setMetadata();
+                if (b) {
+                    sendMetadata(40);
+                    sendResultBool(true);
+                    m_jcl->writeEprom();
+                } else {
+                    m_jcl->readEprom();
+                    sendResultBool(false);
+                }
+            }
+            break;
+        }
+        case 49: {  // Message SetSensor
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::setSensorMessage);
+                // Serial.println("SetSensor");
+                bool b = messageSetSensor();
+                if (b) {
+                    sendMetadata(40);
+                    m_jcl->writeEprom();
+                } else
+                    m_jcl->readEprom();
+                sendResultBool(b);
+            }
+            break;
+        }
+        case 50: { // RemoveSensor
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::removeSensorMessage);
+                Serial.println("RemoveSensor");
+                int msgSize = m_jcl->message[3];
+                int pos = msgSize - 1;
+                while (m_jcl->message[pos] != 74)
+                    pos--;
+                pos++;
+                int nChars = m_jcl->message[pos];
+                char pinC[nChars + 1];
+                pos++;
+                for (uint8_t x = 0; x < nChars; x++)
+                    pinC[x] = m_jcl->message[x + pos];
+                pinC[nChars] = '\0';
+
+                Sensor *s = m_jcl->get_sensors()[atoi(pinC)];
+                if (s == NULL)
+                    sendResultBool(false);
+                else {
+                    s->deleteSensor();
+                    char nSensors[4];
+                    sprintf(nSensors, "%d", atoi(m_jcl->get_metadata()->get_numConfiguredSensors()) - 1);
+                    m_jcl->get_metadata()->set_numConfiguredSensors(nSensors);
+                    m_jcl->get_sensors()[atoi(pinC)] = NULL;
+                    sendMetadata(40);
+                    m_jcl->writeEprom();
+                    sendResultBool(true);
+                }
+            }
+            break;
+        }
+        case 51: {   // Acting
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::actingMessage);
+                Serial.println("Acting");
+                int msgSize = m_jcl->message[3];
+                int pos = msgSize - 1;
+                int value = 0;
+                int pin = 0;
+                int k, j;
+                char command[12];
+                pos = 0;
+                while (m_jcl->message[pos] != 74)
+                    pos++;
+                k = m_jcl->message[++pos];
+
+                if (k == 1)
+                    pin = m_jcl->message[pos + 1] - 48;
+                else {
+                    pin = 10 * (m_jcl->message[pos + 1] - 48);
+                    pin += m_jcl->message[pos + 2] - 48;
+                }
+
+                if (!Sensor::validPin(pin))
+                    sendResultBool(false);
+                if (m_jcl->get_sensors()[pin] == NULL ||
+                    m_jcl->get_sensors()[pin]->getTypeIO() == Constants::CHAR_INPUT)
+                    sendResultBool(false);
+
+                while (m_jcl->message[pos] != 16)
+                    pos++;
+                pos++;
+                pos++;
+                uint8_t numCmd = (int) m_jcl->message[pos];
+                pos++;
+                pos++;
+                bool b = true;
+                Sensor *s = m_jcl->get_sensors()[pin];
+                for (k = 0; k < numCmd; k++) {
+                    uint8_t nChars = m_jcl->message[pos++];
+                    for (j = 0; j < nChars && j < 12; j++)
+                        command[j] = m_jcl->message[pos++];
+                    command[j] = '\0';
+                    pos++;
+                    float f = atof(command);
+                    value = (int) f;
+                    if (!s->acting(value)) {
+                        b = false;
+                        break;
+                    }
+                }
+                sendResultBool(b);
+            }
+            break;
+        }
+        case 52: {   // Restart
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResult(101);
+            } else {
+                sendResult(100);
+                unregister();
+                resetFunc1();
+            }
+            break;
+        }
+        case 53: {   // setEncryption
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::setEncryptionMessage);
+                Serial.println("setEncryption");
+                if (m_jcl->message[21] == 'f')
+                    m_jcl->set_encryption(false);
+                else
+                    m_jcl->set_encryption(true);
+                sendResultBool(true);
+            }
+            break;
+        }
+        case 54: {   // RegisterContext
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::registerContextMessage);
+                Serial.println("RegisterContext");
+                bool b = registerContext(false);
+                if (b)
+                    m_jcl->writeEprom();
+                sendResultBool(b);
+                m_jcl->listSensors();
+            }
+            break;
+        }
+        case 55: {   //  AddContextAction
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::addContextActionMessage);
+                Serial.println("AddContextAction1");
+                uint16_t pos = 17;
+                while (m_jcl->message[pos] != 74)
+                    pos++;
+                pos++;
+                uint8_t nChars = m_jcl->message[pos++];
+                char contextName[nChars + 1];
+                for (uint8_t x = 0; x < nChars; x++)
+                    contextName[x] = m_jcl->message[pos + x];
+                contextName[nChars] = '\0';
+
+                Context *ctx = NULL;
+                for (uint16_t x = 0; x < TOTAL_SENSORS; x++) {
+                    Sensor *s = m_jcl->get_sensors()[x];
+                    if (s->get_numContexts() > 0) {
+                        for (uint8_t ctxNumber = 0; ctxNumber < s->get_numContexts(); ctxNumber++)
+                            if (strcmp(s->getEnabledContexts()[ctxNumber]->get_nickname(), contextName) == 0) {
+                                ctx = s->getEnabledContexts()[ctxNumber];
+                                break;
+                            }
+                    }
+                }
+
+                if (ctx == NULL)
+                    sendResultBool(false);
+                else {
+                    Action *act = new Action();
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    pos++;
+                    nChars = m_jcl->message[pos++];
+                    char *hostIP = (char *) malloc(sizeof(char) * nChars + 1);
+                    for (uint8_t x = 0; x < nChars; x++)
+                        hostIP[x] = m_jcl->message[pos + x];
+                    hostIP[nChars] = '\0';
+                    act->set_hostIP(hostIP);
+
+                    pos += nChars;
+                    char *hostPort = new char[nChars + 1];
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    pos++;
+                    nChars = m_jcl->message[pos++];
+                    for (uint8_t x = 0; x < nChars; x++)
+                        hostPort[x] = m_jcl->message[pos + x];
+                    hostPort[nChars] = '\0';
+                    act->set_hostPort(hostPort);
+
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    pos++;
+                    nChars = m_jcl->message[pos++];
+                    char *hostMAC = new char[nChars + 1];
+                    for (uint8_t x = 0; x < nChars; x++)
+                        hostMAC[x] = m_jcl->message[pos + x];
+                    hostMAC[nChars] = '\0';
+                    act->set_hostMac(hostMAC);
+
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    pos++;
+                    nChars = m_jcl->message[pos++];
+                    char *superPeerPort = new char[nChars + 1];
+                    for (uint8_t x = 0; x < nChars; x++)
+                        superPeerPort[x] = m_jcl->message[pos + x];
+                    superPeerPort[nChars] = '\0';
+                    act->set_superPeerPort(superPeerPort);
+
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    pos++;
+                    nChars = m_jcl->message[pos++];
+                    char *ticket = new char[nChars + 1];
+                    for (uint8_t x = 0; x < nChars; x++)
+                        ticket[x] = m_jcl->message[pos + x];
+                    ticket[nChars] = '\0';
+                    act->set_ticket(ticket);
+
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    pos++;
+                    nChars = m_jcl->message[pos++];
+                    if (m_jcl->message[pos] == 't')
+                        act->set_useSensorValue(true);
+                    else
+                        act->set_useSensorValue(false);
+
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    pos++;
+                    nChars = m_jcl->message[pos++];
+                    char *className = new char[nChars + 1];
+                    for (uint8_t x = 0; x < nChars; x++)
+                        className[x] = m_jcl->message[pos + x];
+                    className[nChars] = '\0';
+                    act->set_className(className);
+                    act->set_classNameSize(nChars);
+
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    nChars = m_jcl->message[++pos];
+                    char *methodName = new char[nChars + 1];
+                    for (uint8_t x = 0; x < nChars; x++)
+                        methodName[x] = m_jcl->message[pos + x + 1];
+                    methodName[nChars] = '\0';
+                    act->set_methodName(methodName);
+                    act->set_methodNameSize(nChars);
+
+                    while (m_jcl->message[pos] != 122)
+                        pos++;
+                    pos--;
+                    char *param = new char[m_messageSize - pos + 1];
+                    for (int x = pos; x < m_messageSize; x++)
+                        param[x - pos] = m_jcl->message[x];
+                    param[m_messageSize - pos] = '\0';
+                    act->set_param(param);
+                    act->set_paramSize(m_messageSize - pos);
+                    act->set_acting(false);
+                    ctx->getEnabledActions()[ctx->get_numActions()] = act;
+                    ctx->set_numActions(ctx->get_numActions() + 1);
+                    m_jcl->writeEprom();
+                    sendResultBool(true);
+                }
+            }
+            break;
+        }
+        case 56: {   // AddContextAction
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::addContextActionMessage);
+                Serial.println("AddContextAction");
+                /*uint8_t nChars=m_jcl->message[43];
+                char contextName[nChars+1];
+                for (uint8_t x=0; x < nChars; x++)
+                contextName[x] = m_jcl->message[44 + x];
+                contextName[nChars] = '\0';*/
+                Context *ctx = NULL;
+                uint16_t pos = 17;
+                while (m_jcl->message[pos] != 74)
+                    pos++;
+                pos++;
+                uint8_t nChars = m_jcl->message[pos++];
+                char contextName[nChars + 1];
+                for (uint8_t x = 0; x < nChars; x++)
+                    contextName[x] = m_jcl->message[pos + x];
+                contextName[nChars] = '\0';
+                for (uint16_t x = 0; x < TOTAL_SENSORS; x++)
+                    if (m_jcl->get_sensors()[x]->get_numContexts() > 0) {
+                        for (uint8_t ctxNumber = 0; ctxNumber < m_jcl->get_sensors()[x]->get_numContexts(); ctxNumber++)
+                            if (strcmp(m_jcl->get_sensors()[x]->getEnabledContexts()[ctxNumber]->get_nickname(),
+                                       contextName) == 0) {
+                                ctx = m_jcl->get_sensors()[x]->getEnabledContexts()[ctxNumber];
+                                break;
+                            }
+                    }
+
+                if (ctx == NULL)
+                    sendResultBool(false);
+                else {
+                    Action *act = new Action();
+                    uint16_t pos = 47 + nChars;
+                    nChars = m_jcl->message[pos++];
+                    char *hostIP = (char *) malloc(sizeof(char) * nChars + 1);
+                    for (uint8_t x = 0; x < nChars; x++)
+                        hostIP[x] = m_jcl->message[pos + x];
+                    hostIP[nChars] = '\0';
+                    act->set_hostIP(hostIP);
+
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    nChars = m_jcl->message[++pos];
+                    pos++;
+                    char *hostPort = (char *) malloc(sizeof(char) * nChars + 1);
+                    for (uint8_t x = 0; x < nChars; x++)
+                        hostPort[x] = m_jcl->message[pos + x];
+                    hostPort[nChars] = '\0';
+                    act->set_hostPort(hostPort);
+
+                    pos += nChars;
+                    while (m_jcl->message[pos] != 74)
+                        pos++;
+                    nChars = m_jcl->message[++pos];
+                    pos++;
+                    char *portSuperPeer = (char *) malloc(sizeof(char) * nChars + 1);
+                    for (uint8_t x = 0; x < nChars; x++)
+                        portSuperPeer[x] = m_jcl->message[pos + x];
+                    portSuperPeer[nChars] = '\0';
+                    act->set_superPeerPort(portSuperPeer);
+
+                    pos += nChars + 95;
+                    while (m_jcl->message[pos] != 3)
+                        pos++;
+                    /*  pos++;
+                      while (m_jcl->message[pos] != 3)
+                        pos++;*/
+
+                    nChars = m_messageSize - pos;
+                    char *param = (char *) malloc(sizeof(char) * nChars + 1);
+                    for (uint16_t x = 0; x < nChars; x++)
+                        param[x] = m_jcl->message[pos + x];
+                    param[nChars] = '\0';
+                    act->set_param(param);
+                    act->set_paramSize(nChars);
+/*for (int jj=0; jj<nChars; jj++){
+  Serial.print((int) act->getParam()[jj]);
+  Serial.print("  ");
+  Serial.print((char) act->getParam()[jj]);
+  Serial.println();
+}
+
+Serial.println();*/
+                    act->set_acting(true);
+                    ctx->getEnabledActions()[ctx->get_numActions()] = act;
+                    ctx->set_numActions(ctx->get_numActions() + 1);
+                    m_jcl->writeEprom();
+                    sendResultBool(true);
+                }
+            }
+            break;
+        }
+        case 61: {
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::registerContextMessage);
+                Serial.println("RegisterContext");
+                bool b = registerContext(true);
+                if (b)
+                    m_jcl->writeEprom();
+                sendResultBool(b);
+                m_jcl->listSensors();
+            }
+            break;
+        }
+        case 62: {
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::registerContextMessage);
+                Serial.println("UnregisterContext");
+                bool b = unregisterContext(false);
+                if (b)
+                    m_jcl->writeEprom();
+                sendResultBool(b);
+                m_jcl->listSensors();
+            }
+            break;
+        }
+        case 63: {
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::registerContextMessage);
+                Serial.println("UnregisterMQTTContext");
+                bool b = unregisterContext(true);
+                if (b)
+                    m_jcl->writeEprom();
+                sendResultBool(b);
+                m_jcl->listSensors();
+            }
+            break;
+        }
+        case 64: {
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::registerContextMessage);
+                Serial.println("remove Context action");
+                bool b = removeContextAction(true);
+                if (b)
+                    m_jcl->writeEprom();
+                sendResultBool(b);
+                m_jcl->listSensors();
+            }
+            break;
+        }
+        case 65: {
+            if (m_jcl->get_metadata()->is_standBy()) {
+                sendResultBool(false);
+            } else {
+                // printMessagePROGMEM(Constants::registerContextMessage);
+                Serial.println("remove Context action");
+                bool b = removeContextAction(false);
+                if (b)
+                    m_jcl->writeEprom();
+                sendResultBool(b);
+                m_jcl->listSensors();
+            }
+            break;
+        }
+        default: {
+            // printMessagePROGMEM(Constants::commandUnkwownMessage);
+            Serial.println("Command unkwnown");
+            Serial.println((int) m_jcl->message[typePosition]);
+            break;
+        }
+    }
+}
+
+void Message::sendResult(int result) {
+    int size;
+    int currentPosition = 0;
+
+    m_jcl->message[currentPosition++] = 8;
+    m_jcl->message[currentPosition++] = result;
+
+    size = completeHeader(currentPosition, 0, false, m_jcl->get_metadata()->get_mac(), 0);
+    m_jcl->get_requestListener().write(m_jcl->message, size);
+    m_jcl->get_requestListener().flush();
+}
+
+
+bool Message::messageSetSensor() {
+    int j;
+    char values[8];
+    Sensor *s;
+    s = new Sensor();
+    int position = 20;
+
+    int nChars = m_jcl->message[position++];
+    char *nameSensor = (char *) malloc(sizeof(char) * nChars + 1);
+    for (j = 0; j < nChars; j++) {
+        nameSensor[j] = m_jcl->message[position++];
+    }
+    nameSensor[nChars] = '\0';
+    s->set_sensorNickname(nameSensor);
+
+    position++;
+    nChars = m_jcl->message[position++];
+    char *pin = (char *) malloc(sizeof(char) * nChars + 1);
+    for (j = 0; j < nChars; j++) {
+        pin[j] = m_jcl->message[position++];
+    }
+    pin[nChars] = '\0';
+    s->set_pin(pin);
+
+    if (!Sensor::validPin(atoi(s->get_pin()))) {
+        s->deleteSensor();
+        return false;
+    }
+
+    /* Sensor Size */
+    position++;
+    nChars = m_jcl->message[position++];
+    char *sensorSize = (char *) malloc(sizeof(char) * nChars + 1);
+    for (j = 0; j < nChars; j++)
+        sensorSize[j] = m_jcl->message[position++];
+    sensorSize[nChars] = '\0';
+    s->set_sensorSize(sensorSize);
+
+    position++;
+    nChars = m_jcl->message[position++];
+    char *delay = (char *) malloc(sizeof(char) * nChars + 1);
+    for (j = 0; j < nChars; j++)
+        delay[j] = m_jcl->message[position++];
+    delay[nChars] = '\0';
+    s->set_delay(delay);
+
+    if (position != m_jcl->message[3]) {
+        position++;
+        nChars = m_jcl->message[position++];
+        for (j = 0; j < nChars; j++)
+            values[j] = m_jcl->message[position++];
+        values[nChars] = '\0';
+
+        s->set_typeIO(toUpperCase(values[0]));
+        if (s->get_typeIO() != Constants::CHAR_OUTPUT && s->get_typeIO() != Constants::CHAR_INPUT)
+            s->set_typeIO(Constants::CHAR_INPUT);
+    } else
+        s->set_typeIO(Constants::CHAR_INPUT);
+
+    position++;
+    nChars = m_jcl->message[position++];
+    for (j = 0; j < nChars; j++)
+        values[j] = m_jcl->message[position++];
+    values[nChars] = '\0';
+    s->set_type(atoi(values));
+
+    s->set_lastExecuted(0);
+    int pinInt = atoi(s->get_pin());
+    if (m_jcl->get_sensors()[pinInt] != NULL) {
+        m_jcl->get_sensors()[pinInt]->deleteSensor();
+        m_jcl->get_sensors()[pinInt] = NULL;
+    } else {
+        char nSensors[4];
+        sprintf(nSensors, "%d", atoi(m_jcl->get_metadata()->get_numConfiguredSensors()) + 1);
+        m_jcl->get_metadata()->set_numConfiguredSensors(nSensors);
+    }
+
+    m_jcl->get_sensors()[atoi(s->get_pin())] = s;
+    s->configurePinMode();
+    m_jcl->listSensors();
+//jcl->availableSensors[jcl->numSensors++] = atoi((s->get_pin()));
+    return true;
+}
+
+
+void Message::sendContextActionMessage(Action *act) {
+    int currentPosition = 0;
+    if (act->is_acting()) {
+        m_jcl->message[currentPosition++] = 8;
+        m_jcl->message[currentPosition++] = 51;
+        m_jcl->message[currentPosition++] = 18;
+        m_jcl->message[currentPosition++] = 37;
+        m_jcl->message[currentPosition++] = 122;
+        m_jcl->message[currentPosition++] = 16;
+        m_jcl->message[currentPosition++] = 106;
+        m_jcl->message[currentPosition++] = 97;
+        m_jcl->message[currentPosition++] = 118;
+        m_jcl->message[currentPosition++] = 97;
+        m_jcl->message[currentPosition++] = 46;
+        m_jcl->message[currentPosition++] = 108;
+        m_jcl->message[currentPosition++] = 97;
+        m_jcl->message[currentPosition++] = 110;
+        m_jcl->message[currentPosition++] = 103;
+        m_jcl->message[currentPosition++] = 46;
+        m_jcl->message[currentPosition++] = 79;
+        m_jcl->message[currentPosition++] = 98;
+        m_jcl->message[currentPosition++] = 106;
+        m_jcl->message[currentPosition++] = 101;
+        m_jcl->message[currentPosition++] = 99;
+        m_jcl->message[currentPosition++] = 116;
+        m_jcl->message[currentPosition++] = 24;
+        m_jcl->message[currentPosition++] = 2;
+        m_jcl->message[currentPosition++] = 16;
+        m_jcl->message[currentPosition++] = 1;
+        m_jcl->message[currentPosition++] = 10;
+
+        for (uint8_t x = 0; x < act->get_paramSize(); x++)
+            m_jcl->message[currentPosition++] = act->get_param()[x];
+
+        m_jcl->message[3] = currentPosition - 6;
+
+        int *ip = Utils::getIPAsArray(act->get_hostIP());
+        if (strcmp(act->get_hostIP(), m_jcl->get_metadata()->get_hostIP()) == 0) {
+            // printMessagePROGMEM(Constants::actingMessage);
+            Serial.println("Acting");
+            int pos = currentPosition - 1;
+            int value = 0;
+            int pin = 0;
+            int k, j;
+            char command[12];
+
+            pos = 0;
+            while (m_jcl->message[pos] != 74)
+                pos++;
+            k = m_jcl->message[++pos];
+
+            if (k == 1)
+                pin = m_jcl->message[pos + 1] - 48;
+            else {
+                pin = 10 * (m_jcl->message[pos + 1] - 48);
+                pin += m_jcl->message[pos + 2] - 48;
+            }
+            while (m_jcl->message[pos] != 16)
+                pos++;
+            pos++;
+            pos++;
+            uint8_t numCmd = (int) m_jcl->message[pos];
+            pos++;
+            pos++;
+
+            for (k = 0; k < numCmd; k++) {
+                uint8_t nChars = m_jcl->message[pos++];
+                for (j = 0; j < nChars && j < 12; j++)
+                    command[j] = m_jcl->message[pos++];
+                command[j] = '\0';
+                pos++;
+
+                float f = atof(command);
+                value = (int) f;
+                if (!m_jcl->get_sensors()[pin]->acting(value))
+                    break;
+            }
+        } else {
+            int msgSize = completeHeader(currentPosition, 9, true, act->get_hostMac(), atoi(act->get_superPeerPort()));
+            EthernetClient host;
+            host.connect(IPAddress(ip[0], ip[1], ip[2], ip[3]), atoi(act->get_hostPort()));
+            host.write(m_jcl->message, msgSize);
+            host.flush();
+            while (!host.available());
+            while (host.available())
+                host.read();
+            if (host.connected())
+                host.stop();
+        }
+    } else {
+        m_jcl->message[currentPosition++] = 8;
+        m_jcl->message[currentPosition++] = 58;
+        m_jcl->message[currentPosition++] = 18;
+        m_jcl->message[currentPosition++] = 127;
+        m_jcl->message[currentPosition++] = 122;
+        m_jcl->message[currentPosition++] = 16;
+        m_jcl->message[currentPosition++] = 106;
+        m_jcl->message[currentPosition++] = 97;
+        m_jcl->message[currentPosition++] = 118;
+        m_jcl->message[currentPosition++] = 97;
+        m_jcl->message[currentPosition++] = 46;
+        m_jcl->message[currentPosition++] = 108;
+        m_jcl->message[currentPosition++] = 97;
+        m_jcl->message[currentPosition++] = 110;
+        m_jcl->message[currentPosition++] = 103;
+        m_jcl->message[currentPosition++] = 46;
+        m_jcl->message[currentPosition++] = 79;
+        m_jcl->message[currentPosition++] = 98;
+        m_jcl->message[currentPosition++] = 106;
+        m_jcl->message[currentPosition++] = 101;
+        m_jcl->message[currentPosition++] = 99;
+        m_jcl->message[currentPosition++] = 116;
+        m_jcl->message[currentPosition++] = 24;
+        m_jcl->message[currentPosition++] = 9;
+        m_jcl->message[currentPosition++] = 16;
+        m_jcl->message[currentPosition++] = 1;
+        m_jcl->message[currentPosition++] = 10;
+
+        m_jcl->message[currentPosition++] = 2;
+        m_jcl->message[currentPosition++] = 8;
+        if (act->is_useSensorValue())
+            m_jcl->message[currentPosition++] = 1;
+        else
+            m_jcl->message[currentPosition++] = 0;
+
+        m_jcl->message[currentPosition++] = 10;
+        m_jcl->message[currentPosition++] = strlen(act->get_ticket()) + 2;
+        m_jcl->message[currentPosition++] = 74;
+        m_jcl->message[currentPosition++] = strlen(act->get_ticket());
+        for (uint8_t x = 0; x < strlen(act->get_ticket()); x++)
+            m_jcl->message[currentPosition++] = act->get_ticket()[x];
+
+        m_jcl->message[currentPosition++] = 10;
+        m_jcl->message[currentPosition++] = strlen(act->get_hostIP()) + 2;
+        m_jcl->message[currentPosition++] = 74;
+        m_jcl->message[currentPosition++] = strlen(act->get_hostIP());
+        for (uint8_t x = 0; x < strlen(act->get_hostIP()); x++)
+            m_jcl->message[currentPosition++] = act->get_hostIP()[x];
+
+        m_jcl->message[currentPosition++] = 10;
+        m_jcl->message[currentPosition++] = strlen(act->get_hostPort()) + 2;
+        m_jcl->message[currentPosition++] = 74;
+        m_jcl->message[currentPosition++] = strlen(act->get_hostPort());
+        for (uint8_t x = 0; x < strlen(act->get_hostPort()); x++)
+            m_jcl->message[currentPosition++] = act->get_hostPort()[x];
+
+        m_jcl->message[currentPosition++] = 10;
+        m_jcl->message[currentPosition++] = strlen(act->get_hostMac()) + 2;
+        m_jcl->message[currentPosition++] = 74;
+        m_jcl->message[currentPosition++] = strlen(act->get_hostMac());
+        for (uint8_t x = 0; x < strlen(act->get_hostMac()); x++)
+            m_jcl->message[currentPosition++] = act->get_hostMac()[x];
+
+        if (act->get_superPeerPort() != 0) {
+            m_jcl->message[currentPosition++] = 10;
+            m_jcl->message[currentPosition++] = strlen(act->get_superPeerPort()) + 2;
+            m_jcl->message[currentPosition++] = 74;
+            m_jcl->message[currentPosition++] = strlen(act->get_superPeerPort());
+            for (uint8_t x = 0; x < strlen(act->get_superPeerPort()); x++)
+                m_jcl->message[currentPosition++] = act->get_superPeerPort()[x];
+        }
+        m_jcl->message[currentPosition++] = 10;
+        m_jcl->message[currentPosition++] = act->get_classNameSize() + 2;
+        m_jcl->message[currentPosition++] = 74;
+        m_jcl->message[currentPosition++] = act->get_classNameSize();
+        for (uint8_t x = 0; x < act->get_classNameSize(); x++)
+            m_jcl->message[currentPosition++] = act->get_className()[x];
+
+        m_jcl->message[currentPosition++] = 10;
+        m_jcl->message[currentPosition++] = act->get_methodNameSize() + 2;
+        m_jcl->message[currentPosition++] = 74;
+        m_jcl->message[currentPosition++] = act->get_methodNameSize();
+        for (uint8_t x = 0; x < act->get_methodNameSize(); x++)
+            m_jcl->message[currentPosition++] = act->get_methodName()[x];
+
+        m_jcl->message[currentPosition++] = 10;
+        for (uint8_t x = 0; x < act->get_paramSize(); x++)
+            m_jcl->message[currentPosition++] = act->get_param()[x];
+
+        uint8_t arrayChar[10];
+        int totalBytes = encode_unsigned_varint(arrayChar, currentPosition - 4 - 2);
+
+        if (totalBytes > 1) {
+            for (int aux = currentPosition; aux > 3; aux--)
+                m_jcl->message[aux + 1] = m_jcl->message[aux];
+        }
+        for (int i = 0; i < totalBytes; i++)
+            m_jcl->message[3 + i] = (int) arrayChar[i];
+        currentPosition += totalBytes - 1;
+
+        int msgSize = completeHeader(currentPosition, 9, true, act->get_hostMac(), atoi(act->get_superPeerPort()));
+
+        int *ip = Utils::getIPAsArray(act->get_hostIP());
+        EthernetClient host;
+        host.connect(IPAddress(ip[0], ip[1], ip[2], ip[3]), atoi(act->get_hostPort()));
+        host.connect(IPAddress(192, 168, 2, 109), 7070);
+        host.write(m_jcl->message, msgSize);
+        host.flush();
+        long time = millis();
+        while (!host.available() && millis() - time < 10000);
+        while (host.available())
+            host.read();
+        if (host.connected())
+            host.stop();
+    }
+}
+
+void Message::unregister() {
+    int size;
+    int currentPosition = 0;
+
+    m_jcl->message[currentPosition++] = 8; // Indicates first field
+
+    /* The next fields indicates the value -2. It takes multiple bytes to indicate negative field because
+    Protocol Buffer uses base 128 varints */
+    m_jcl->message[currentPosition++] = -2;
+    m_jcl->message[currentPosition++] = -1;
+    m_jcl->message[currentPosition++] = -1;
+    m_jcl->message[currentPosition++] = -1;
+    m_jcl->message[currentPosition++] = -1;
+    m_jcl->message[currentPosition++] = -1;
+    m_jcl->message[currentPosition++] = -1;
+    m_jcl->message[currentPosition++] = -1;
+    m_jcl->message[currentPosition++] = -1;
+    m_jcl->message[currentPosition++] = 1;
+
+    m_jcl->message[currentPosition++] = 18;
+
+    // Calculate size to append to the message
+    int totalSize = 2 +
+                    strlen(m_jcl->get_metadata()->get_hostIP()) + 2 +
+                    strlen(m_jcl->get_metadata()->get_hostPort()) + 2 +
+                    strlen(m_jcl->get_metadata()->get_mac()) + 2 +
+                    1 + 2 +  // strlen(coreValue)
+                    1 + 2;   // strlen(deviceType)
+
+    /* If total size is less then 128 we only need one byte to store it */
+    if (totalSize < 128)
+        m_jcl->message[currentPosition++] = totalSize;
+    else {
+        int lastByte = (int) totalSize / 128;
+        int rest = 128 - ((int) totalSize % 128);
+        rest *= -1;
+        m_jcl->message[currentPosition++] = rest;
+        m_jcl->message[currentPosition++] = lastByte;
+    }
+
+    m_jcl->message[currentPosition++] = 8;
+    m_jcl->message[currentPosition++] = 5;
+
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = strlen(m_jcl->get_metadata()->get_hostIP());
+    for (unsigned int i = 0; i < strlen(m_jcl->get_metadata()->get_hostIP()); i++)
+        m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_hostIP()[i];
+
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = strlen(m_jcl->get_metadata()->get_hostPort());
+    for (unsigned int i = 0; i < strlen(m_jcl->get_metadata()->get_hostPort()); i++)
+        m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_hostPort()[i];
+
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = strlen(m_jcl->get_metadata()->get_mac());
+    for (unsigned int i = 0; i < strlen(m_jcl->get_metadata()->get_mac()); i++)
+        m_jcl->message[currentPosition++] = m_jcl->get_metadata()->get_mac()[i];
+
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = 1;  //strlen(corevalue)
+    for (unsigned int i = 0; i < 1; i++)
+        m_jcl->message[currentPosition++] = Constants::coreValue[i];
+
+    m_jcl->message[currentPosition++] = 18;
+    m_jcl->message[currentPosition++] = 1;
+    for (unsigned int i = 0; i < 1; i++)
+        m_jcl->message[currentPosition++] = Constants::deviceTypeValue[i];  // Device Type
+
+    size = completeHeader(currentPosition, 2, true, m_jcl->get_metadata()->get_mac(), 0);
+
+    m_jcl->get_client().write(m_jcl->message, size);
+    m_jcl->get_client().flush();
+    receiveServerAnswer();
+}
+
+bool Message::unregisterContext(bool isMQTTContext) {
+    int pos = 14;
+    while (m_jcl->message[pos] != 74)
+        pos++;
+    int nChars = m_jcl->message[++pos];
+
+    char *nickname = (char *) malloc(sizeof(char) * nChars + 1);
+    for (uint8_t x = 0; x < nChars; x++)
+        nickname[x] = m_jcl->message[x + pos + 1];
+    nickname[nChars] = '\0';
+
+    for (int sensorPos = 0; sensorPos < m_jcl->get_totalSensors(); sensorPos++) {
+        if (m_jcl->get_sensors()[sensorPos] != NULL) {
+            Sensor *s = m_jcl->get_sensors()[sensorPos];
+            for (int ctxPos = 0; ctxPos < s->get_numContexts(); ctxPos++) {
+                Context *ctx = s->getEnabledContexts()[ctxPos];
+                if (strcmp(ctx->get_nickname(), nickname) == 0 && isMQTTContext == ctx->is_mqttContext()) {
+                    Serial.println("Exists");
+
+                    if (s->get_numContexts() == 1 || ctxPos == s->get_numContexts() - 1)
+                        s->getEnabledContexts()[ctxPos] = NULL;
+                    else {
+                        s->getEnabledContexts()[ctxPos] = s->getEnabledContexts()[s->get_numContexts() - 1];
+                        s->getEnabledContexts()[s->get_numContexts() - 1] = NULL;
+                    }
+                    ctx->deleteContext();
+                    s->set_numContexts(s->get_numContexts() - 1);
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool Message::removeContextAction(bool isActing) {
+    uint16_t pos = 17;
+    while (m_jcl->message[pos] != 74)
+        pos++;
+    pos++;
+    uint8_t nChars = m_jcl->message[pos++];
+    char contextName[nChars + 1];
+    for (uint8_t x = 0; x < nChars; x++)
+        contextName[x] = m_jcl->message[pos + x];
+    contextName[nChars] = '\0';
+
+    /*uint8_t nChars=m_jcl->message[43];
+    char contextName[nChars+1];
+    for (uint8_t x=0; x < nChars; x++)
+      contextName[x] = m_jcl->message[44 + x];
+    contextName[nChars] = '\0';*/
+    Context *ctx = NULL;
+    for (uint16_t x = 0; x < TOTAL_SENSORS; x++)
+        if (m_jcl->getSensors()[x]->getNumContexts() > 0) {
+            for (uint8_t ctxNumber = 0; ctxNumber < m_jcl->getSensors()[x]->getNumContexts(); ctxNumber++)
+                if (strcmp(m_jcl->getSensors()[x]->getEnabledContexts()[ctxNumber]->getNickname(), contextName) == 0) {
+                    ctx = m_jcl->getSensors()[x]->getEnabledContexts()[ctxNumber];
+                    break;
+                }
+        }
+    Serial.print("1: ");
+    Serial.println(ctx == NULL);
+    if (ctx == NULL)
+        return false;
+
+    if (isActing) {
+        uint16_t pos = 47 + nChars;
+        nChars = m_jcl->message[pos++];
+        char *hostIP = (char *) malloc(sizeof(char) * nChars + 1);
+        for (uint8_t x = 0; x < nChars; x++)
+            hostIP[x] = m_jcl->message[pos + x];
+        hostIP[nChars] = '\0';
+
+        pos += nChars;
+        while (m_jcl->message[pos] != 74)
+            pos++;
+        nChars = m_jcl->message[++pos];
+        pos++;
+        char *hostPort = (char *) malloc(sizeof(char) * nChars + 1);
+        for (uint8_t x = 0; x < nChars; x++)
+            hostPort[x] = m_jcl->message[pos + x];
+        hostPort[nChars] = '\0';
+
+        pos += nChars;
+        while (m_jcl->message[pos] != 74)
+            pos++;
+        nChars = m_jcl->message[++pos];
+        pos++;
+        char *portSuperPeer = (char *) malloc(sizeof(char) * nChars + 1);
+        for (uint8_t x = 0; x < nChars; x++)
+            portSuperPeer[x] = m_jcl->message[pos + x];
+        portSuperPeer[nChars] = '\0';
+
+        pos += nChars + 95;
+        while (m_jcl->message[pos] != 3)
+            pos++;
+        /*pos++;
+        while (m_jcl->message[pos] != 3)
+          pos++;*/
+
+        nChars = m_messageSize - pos;
+        char *param = (char *) malloc(sizeof(char) * nChars + 1);
+        for (uint16_t x = 0; x < nChars; x++)
+            param[x] = m_jcl->message[pos + x];
+        param[nChars] = '\0';
+
+        for (int actPos = 0; actPos < ctx->get_numActions(); actPos++) {
+            Action *act = ctx->getEnabledActions()[actPos];
+            if (act->is_acting() && strcmp(act->get_hostIP(), hostIP) == 0 && strcmp(act->get_hostPort(), hostPort) == 0
+                && strcmp(act->get_superPeerPort(), portSuperPeer) == 0 && strcmp(act->get_param(), param) == 0) {
+
+                if (ctx->get_numActions() == 1 || actPos == ctx->get_numActions() - 1) {
+                    ctx->getEnabledActions()[actPos] = NULL;
+                } else {
+                    ctx->getEnabledActions()[actPos] = ctx->getEnabledActions()[ctx->get_numActions() - 1];
+                    ctx->getEnabledActions()[ctx->get_numActions() - 1] = NULL;
+                }
+
+                act->deleteAction();
+                ctx->set_numActions(ctx->get_numActions() - 1);
+                return true;
+            }
+        }
+        return false;
+    } else {
+        bool useSensorValue;
+        pos += nChars;
+        while (m_jcl->message[pos] != 74)
+            pos++;
+        pos++;
+        nChars = m_jcl->message[pos++];
+        if (m_jcl->message[pos] == 't')
+            useSensorValue = true;
+        else
+            useSensorValue = false;
+
+        pos += nChars;
+        while (m_jcl->message[pos] != 74)
+            pos++;
+        pos++;
+        nChars = m_jcl->message[pos++];
+        char *className = new char[nChars + 1];
+        for (uint8_t x = 0; x < nChars; x++)
+            className[x] = m_jcl->message[pos + x];
+        className[nChars] = '\0';
+
+        pos += nChars;
+        while (m_jcl->message[pos] != 74)
+            pos++;
+        nChars = m_jcl->message[++pos];
+        char *methodName = new char[nChars + 1];
+        for (uint8_t x = 0; x < nChars; x++)
+            methodName[x] = m_jcl->message[pos + x + 1];
+        methodName[nChars] = '\0';
+
+        while (m_jcl->message[pos] != 122)
+            pos++;
+        pos--;
+        char *param = new char[m_messageSize - pos + 1];
+        for (int x = pos; x < m_messageSize; x++)
+            param[x - pos] = m_jcl->message[x];
+        param[m_messageSize - pos] = '\0';
+
+        for (int actPos = 0; actPos < ctx->get_numActions(); actPos++) {
+            Action *act = ctx->getEnabledActions()[actPos];
+            if (!act->is_acting() && act->is_useSensorValue() == useSensorValue
+                && strcmp(act->get_className(), className) == 0 && strcmp(act->get_methodName(), methodName) == 0
+                && strcmp(act->get_param(), param) == 0) {
+
+                if (ctx->get_numActions() == 1 || actPos == ctx->get_numActions() - 1) {
+                    ctx->getEnabledActions()[actPos] = NULL;
+                } else {
+                    ctx->getEnabledActions()[actPos] = ctx->getEnabledActions()[ctx->get_numActions() - 1];
+                    ctx->getEnabledActions()[ctx->get_numActions() - 1] = NULL;
+                }
+                act->deleteAction();
+                ctx->set_numActions(ctx->get_numActions() - 1);
+                return true;
+            }
+        }
+        return false;
+    }
 }

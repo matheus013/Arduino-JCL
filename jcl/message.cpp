@@ -2,7 +2,7 @@
 // Created by Matheus Inácio on 2019-03-19.
 //
 
-#include "m_jcl.h"
+#include "jcl.h"
 #include "message.h"
 #include "sensor.h"
 #include "crypt.h"
@@ -997,7 +997,7 @@ void Message::treatMessage() {
                 if (!Sensor::validPin(pin))
                     sendResultBool(false);
                 if (m_jcl->get_sensors()[pin] == NULL ||
-                    m_jcl->get_sensors()[pin]->getTypeIO() == Constants::CHAR_INPUT)
+                    m_jcl->get_sensors()[pin]->get_typeIO() == Constants::CHAR_INPUT)
                     sendResultBool(false);
 
                 while (m_jcl->message[pos] != 16)
@@ -1811,10 +1811,10 @@ bool Message::removeContextAction(bool isActing) {
     contextName[nChars] = '\0';*/
     Context *ctx = NULL;
     for (uint16_t x = 0; x < TOTAL_SENSORS; x++)
-        if (m_jcl->getSensors()[x]->getNumContexts() > 0) {
-            for (uint8_t ctxNumber = 0; ctxNumber < m_jcl->getSensors()[x]->getNumContexts(); ctxNumber++)
-                if (strcmp(m_jcl->getSensors()[x]->getEnabledContexts()[ctxNumber]->getNickname(), contextName) == 0) {
-                    ctx = m_jcl->getSensors()[x]->getEnabledContexts()[ctxNumber];
+        if (m_jcl->get_sensors()[x]->get_numContexts() > 0) {
+            for (uint8_t ctxNumber = 0; ctxNumber < m_jcl->get_sensors()[x]->get_numContexts(); ctxNumber++)
+                if (strcmp(m_jcl->get_sensors()[x]->getEnabledContexts()[ctxNumber]->get_nickname(), contextName) == 0) {
+                    ctx = m_jcl->get_sensors()[x]->getEnabledContexts()[ctxNumber];
                     break;
                 }
         }

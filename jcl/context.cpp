@@ -3,7 +3,8 @@
 
 using namespace std;
 
-Context::Context() {
+Context::Context()
+{
     this->m_mqttContext = false;
     this->m_operators = new char *[MAX_ACTIONS_PER_CONTEXT];
     for (int i = 0; i < MAX_ACTIONS_PER_CONTEXT; i++)
@@ -19,12 +20,14 @@ Context::Context() {
     this->m_triggered = false;
 }
 
-void Context::deleteContext() {
+void Context::deleteContext()
+{
     for (int i = 0; i < m_numActions; i++)
         enabledActions[i]->deleteAction();
     free(this->m_nickname);
     free(this->m_expression);
-    for (int i = 0; i < MAX_ACTIONS_PER_CONTEXT; i++) {
+    for (int i = 0; i < MAX_ACTIONS_PER_CONTEXT; i++)
+    {
         free(this->m_operators[i]);
         free(this->m_threshold[i]);
     }
@@ -33,15 +36,20 @@ void Context::deleteContext() {
     free(this);
 }
 
-Action **Context::getEnabledActions() {
+Action **Context::getEnabledActions()
+{
     return this->enabledActions;
 }
 
-string Context::toString() {
-    string str = "";
-    str.append(get_nickname()).append(" ");
-    str.append(get_expression()).append(" ");
-    str.append(to_string(get_numActions())).append(" ");
-    str.append(to_string(get_numExpressions()));
+String Context::toString()
+{
+    String str = "";
+    str += get_nickname();
+    str += " ";
+    str += get_expression();
+    str += " ";
+    str.concat(get_numActions());
+    str += " ";
+    str.concat(get_numExpressions());
     return str;
 }

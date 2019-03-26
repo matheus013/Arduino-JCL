@@ -13,7 +13,7 @@ void setup() {
   jcl.set_encryption(false); // optional (Default = false)
   jcl.changeBoardNickname(nameBoard); // optional (Board Nickname)
   jcl.useEEPROM(false);  // optional (default = true) if false Arduino won't restore the configuration of all sensors and contexts when a reboot occurs
-  jcl.set_brokerData(serverIP, 1883);  // mqtt broker configuration
+  jcl.setBrokerData(serverIP, 1883);  // mqtt broker configuration
   jcl.startHost();
 }
 

@@ -23,6 +23,8 @@ public:
 
     void configureJCLServer(char *serverIP, int serverPort);
 
+    void setBrokerData(char* brokerIP, int brokerPort);
+
     void startHost();
 
     void writeEprom();

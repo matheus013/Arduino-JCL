@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include "context.h"
-#include <string>
+// #include <string>
 #include "helpers.h"
 
 const int MAX_CONTEXTS = 15;
@@ -27,7 +27,7 @@ public:
 
     long count;
 
-    string toString();
+    String toString();
     Context** getEnabledContexts();
 
 private:

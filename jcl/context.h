@@ -7,7 +7,7 @@
 
 #include "action.h"
 #include "helpers.h"
-#include <string>
+// #include <string>
 
 using namespace std;
 
@@ -17,7 +17,7 @@ public:
 
     Action **getEnabledActions();
 
-    string toString();
+    String toString();
 
     void deleteContext();
 

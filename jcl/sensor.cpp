@@ -7,9 +7,10 @@
 #include "jcl.h"
 #include <Servo.h>
 
-using namespace std;
+// using namespace std;
 
-Sensor::Sensor() {
+Sensor::Sensor()
+{
     m_lastExecuted = 0;
     count = 0;
     this->m_numContexts = 0;
@@ -17,17 +18,23 @@ Sensor::Sensor() {
         enabledContexts[x] = NULL;
 }
 
-bool Sensor::acting(float value) {
-    if (this->m_type == Constants::SERVO_ACTUATOR) {
+bool Sensor::acting(float value)
+{
+    if (this->m_type == Constants::SERVO_ACTUATOR)
+    {
         Servo servo;
         servo.attach(atoi(this->m_pin));
         servo.write(value);
         return true;
-    } else if (digitalPin()) {
+    }
+    else if (digitalPin())
+    {
         if (value != LOW && value != HIGH)
             return false;
         digitalWrite(atoi(this->m_pin), value);
-    } else {
+    }
+    else
+    {
         if (value < 0 || value > 255)
             return false;
         analogWrite(getAnalogPin(), value);
@@ -35,9 +42,12 @@ bool Sensor::acting(float value) {
     return true;
 }
 
-void Sensor::deleteSensor() {
-    for (int i = 0; i < m_numContexts; i++) {
-        if (enabledContexts[i] != NULL) {
+void Sensor::deleteSensor()
+{
+    for (int i = 0; i < m_numContexts; i++)
+    {
+        if (enabledContexts[i] != NULL)
+        {
             enabledContexts[i]->deleteContext();
             enabledContexts[i] = NULL;
         }
@@ -47,11 +57,15 @@ void Sensor::deleteSensor() {
     free(this);
 }
 
-void Sensor::configurePinMode() {
-    if (this->m_type == Constants::SERVO_ACTUATOR) {
+void Sensor::configurePinMode()
+{
+    if (this->m_type == Constants::SERVO_ACTUATOR)
+    {
         Servo servo;
         servo.attach(atoi(m_pin));
-    } else if (digitalPin()) {
+    }
+    else if (digitalPin())
+    {
         if (m_typeIO == Constants::CHAR_OUTPUT)
             pinMode(atoi(m_pin), OUTPUT);
         else
@@ -59,40 +73,51 @@ void Sensor::configurePinMode() {
     }
 }
 
-bool Sensor::digitalPin() {
+bool Sensor::digitalPin()
+{
     return atoi(m_pin) < JCL::get_totalDigitalSensors();
 }
 
-bool Sensor::validPin(int pin) {
+bool Sensor::validPin(int pin)
+{
     return !(pin < 0 || pin >= JCL::get_totalSensors());
 }
 
-int Sensor::getAnalogPin() {
+int Sensor::getAnalogPin()
+{
     return atoi(m_pin) - JCL::get_totalDigitalSensors();
 }
 
-string getString(char x) {
+String getString(char x)
+{
     // string class has a constructor
     // that allows us to specify size of
     // string as first parameter and character
     // to be filled in given size as second
     // parameter.
-    string s(1, x);
-
-    return s;
+    // String s(x);
+    return String(x);
 }
 
-string Sensor::toString() {
-    string str;
-    str.append(get_pin()).append(" ");
-    str.append(get_sensorNickname()).append(" ");
-    str.append(get_sensorSize()).append(" ");
-    str.append(getString(get_typeIO())).append(" ");
-    str.append(to_string(get_type())).append(" ");
-    str.append(to_string(get_numContexts())).append(" contexts");
+String Sensor::toString()
+{
+    String str;
+    str += get_pin();
+    str += " ";
+    str += get_sensorNickname();
+    str += " ";
+    str += get_sensorSize();
+    str += " ";
+    str += getString(get_typeIO());
+    str += " ";
+    str.concat(get_type());
+    str += " ";
+    str.concat(get_numContexts());
+    str += " contexts";
     return str;
 }
 
-Context **Sensor::getEnabledContexts() {
+Context **Sensor::getEnabledContexts()
+{
     return this->enabledContexts;
 }

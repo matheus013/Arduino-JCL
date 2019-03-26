@@ -13,8 +13,8 @@
 //void writeEpromHelp(int *j, char *str);
 
 char *readEpromHelp(int *j);
-void writeEpromHelp(int *j, char *str);
-void writeEpromHelp(int *j, String str);
+void writeEpromHelp(uint16_t *j, char *str);
+void writeEpromHelp(uint16_t *j, String str);
 
 JCL::JCL(int hostPort, char *mac) {
     delay(7500);
@@ -233,7 +233,7 @@ void JCL::writeEprom() {
                         writeEpromHelp(&addr, String(act->get_className()));
                         writeEpromHelp(&addr, String(act->get_methodName()));
                     }
-                    writeEpromHelp(&addr, act->get_paramSize());
+                    writeEpromHelp(&addr, String(act->get_paramSize()));
                 }
             }
         }
@@ -266,7 +266,7 @@ void JCL::connectToServer() {
         Serial.print(m_metadata->get_serverIP());
         Serial.print("  ");
         Serial.println(m_metadata->get_serverPort());
-        client.connect(IPAddress(ip[0], ip[1], ip[2], ip[3]), atoi(m_metadata->get_serverPort()));
+        m_client.connect(IPAddress(ip[0], ip[1], ip[2], ip[3]), atoi(m_metadata->get_serverPort()));
         if (millis() >= 12000 && !m_client.connected()) {
             Serial.println("Not Connected");
             break;
@@ -295,13 +295,13 @@ void JCL::listSensors() {
     Serial.println(freeRam());
     for (int i = 0; i < TOTAL_SENSORS; i++) {
         if (sensors[i] != NULL) {
-            Serial.println(sensors[i].toString())
-            for (int k = 0; k < sensors[i]->getNumContexts(); k++) {
-                Serial.println(sensors[i]->get_enabledContexts()[k]->toString());
-                for (int y = 0; y < sensors[i]->get_enabledContexts()[k]->getNumExpressions(); y++) {
+            Serial.println(sensors[i]->toString());
+            for (int k = 0; k < sensors[i]->get_numContexts(); k++) {
+                Serial.println(sensors[i]->getEnabledContexts()[k]->toString());
+                for (int y = 0; y < sensors[i]->getEnabledContexts()[k]->get_numExpressions(); y++) {
                     Serial.print("   ||");
-                    Serial.print(sensors[i]->get_enabledContexts()[k]->get_operators()[y]);
-                    Serial.println(sensors[i]->get_enabledContexts()[k]->get_threshold()[y]);
+                    Serial.print(sensors[i]->getEnabledContexts()[k]->get_operators()[y]);
+                    Serial.println(sensors[i]->getEnabledContexts()[k]->get_threshold()[y]);
                 }
             }
             Serial.println();
@@ -329,7 +329,7 @@ void JCL::run() {
 }
 
 void JCL::connectToBroker() {
-    m_mqtt = new PubSubClient(mqttEthClient);
+    m_mqtt = new PubSubClient(m_mqttEthClient);
 
     m_mqtt->setServer(get_metadata()->get_brokerIP(), m_metadata->get_brokerPort());
     Serial.println(get_metadata()->get_brokerIP());
@@ -473,14 +473,14 @@ char *readEpromHelp(int *j) {
     return result;
 }
 
-void writeEpromHelp(int *j, String str) {
+void writeEpromHelp(uint16_t *j, String str) {
     int len = str.length();
     EEPROM.write((*j)++, len);
     for (int i = 0; i < len; i++) {
         EEPROM.write((*j)++, str[i]);
     }
     EEPROM.write((*j),'\0');   //Add termination null character for String Data
-    EEPROM.commit();
+    // EEPROM.commit();
 }
 
 int JCL::get_totalSensors() {
@@ -503,4 +503,9 @@ int JCL::freeRam() {
 
 Sensor **JCL::get_sensors() {
     return this->sensors;
+}
+
+void JCL::setBrokerData(char *brokerIP, int brokerPort) {
+    m_metadata->set_brokerIP(brokerIP);
+    m_metadata->set_brokerPort(brokerPort);
 }

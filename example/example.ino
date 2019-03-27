@@ -3,7 +3,7 @@
 void setup() {
   Serial.begin(9600);
   char  hostMAC[] = "BA-DB-CD-DD-EE-FF",
-        serverIP[] = "192.168.1.19";
+                    serverIP[] = "192.168.1.19";
   char * nameBoard = "arduino";
   int hostPort = 5151,
       serverPort = 6969;

@@ -11,15 +11,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="16a1ba76-4317-4cf3-8769-57ea8e68d69d" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/example.ino" beforeDir="false" afterPath="$PROJECT_DIR$/example/example.ino" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jcl/cmake-build-debug/CMakeFiles/Makefile.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/jcl/cmake-build-debug/CMakeFiles/Makefile.cmake" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jcl/cmake-build-debug/CMakeFiles/clion-log.txt" beforeDir="false" afterPath="$PROJECT_DIR$/jcl/cmake-build-debug/CMakeFiles/clion-log.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jcl/message.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/jcl/message.cpp" afterDir="false" />
-    </list>
+    <list default="true" id="16a1ba76-4317-4cf3-8769-57ea8e68d69d" name="Default Changelist" comment="" />
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
     <ignored path="$PROJECT_DIR$/jcl/cmake-build-debug/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -52,8 +44,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/jcl/message.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="261">
-              <caret line="701" lean-forward="true" selection-start-line="701" selection-end-line="701" />
+            <state relative-caret-position="3724">
+              <caret line="1942" column="1" selection-start-line="1942" selection-start-column="1" selection-end-line="1942" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -180,12 +172,12 @@
       <workItem from="1553015728643" duration="282000" />
       <workItem from="1553016065049" duration="3973000" />
       <workItem from="1553620810839" duration="461000" />
-      <workItem from="1553709890431" duration="3007000" />
+      <workItem from="1553709890431" duration="3186000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="7804000" />
+    <option name="totallyTimeSpent" value="7983000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1280" height="800" extended-state="6" />
@@ -265,8 +257,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/jcl/message.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="261">
-          <caret line="701" lean-forward="true" selection-start-line="701" selection-end-line="701" />
+        <state relative-caret-position="3724">
+          <caret line="1942" column="1" selection-start-line="1942" selection-start-column="1" selection-end-line="1942" selection-end-column="1" />
         </state>
       </provider>
     </entry>
